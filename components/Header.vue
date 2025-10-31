@@ -3,8 +3,11 @@
         <div class="flex items-center justify-between">
             <NuxtLink to="/"
                 class="flex items-center gap-2 text-blue-500 transition-all duration-500 hover:opacity-70">
-                <Icon class="text-3xl" name="hugeicons:job-search" />
+                <Icon class="text-3xl" name="si:ai-fill"/>
                 <span class="text-xl font-mono font-semibold">Fire AI</span>
+            </NuxtLink>
+            <NuxtLink to="/login" class="rounded-full border border-white/20 shadow-md flex items-center justify-center p-1 transition-all duration-500 hover:scale-105">
+                <Icon class="text-3xl" name="iconamoon:profile-bold"/>
             </NuxtLink>
         </div>
 

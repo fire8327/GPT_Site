@@ -8,7 +8,7 @@
     }
 
     #__nuxt{
-        @apply flex flex-col min-h-screen bg-[#131313] text-[#F2F2F2] overflow-x-hidden text-lg
+        @apply flex flex-col min-h-screen bg-[#14120B] text-[#F2F2F2] overflow-x-hidden text-lg
     }
         
     :root{
