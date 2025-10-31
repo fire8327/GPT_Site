@@ -6,9 +6,12 @@
                 <Icon class="text-3xl" name="si:ai-fill"/>
                 <span class="text-xl font-mono font-semibold">Fire AI</span>
             </NuxtLink>
-            <NuxtLink to="/login" class="rounded-full border border-white/20 shadow-md flex items-center justify-center p-1 transition-all duration-500 hover:scale-105">
-                <Icon class="text-3xl" name="iconamoon:profile-bold"/>
-            </NuxtLink>
+            <div class="flex items-center gap-4">
+                <NuxtLink v-if="userStore.authenticated" to="/chat" class="px-4 py-1.5 rounded-xl font-semibold bg-[#201e18]">Чат</NuxtLink>
+                <NuxtLink to="/login" class="rounded-full border border-white/20 shadow-md flex items-center justify-center p-1 transition-all duration-500 hover:scale-105">
+                    <Icon class="text-3xl" name="iconamoon:profile-bold"/>
+                </NuxtLink>
+            </div>
         </div>
 
         <!-- сообщения -->
@@ -35,4 +38,8 @@ nuxtApp.hook('page:start', () => {
 
 /* создание сообщений */
 const { messageTitle, messageType } = storeToRefs(useMessagesStore())
+
+
+/* проверка входа */
+const userStore = useUserStore()
 </script>

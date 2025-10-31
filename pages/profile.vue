@@ -28,6 +28,10 @@
                 <Icon class="text-xl" name="ic:round-email"/>
                 <span>Связь с разработчиком</span>
             </button>
+            <button @click="logout" class="cursor-pointer flex items-center gap-2 text-gray-400 text-base p-2 rounded-xl transition-all duration-500 hover:bg-[#201e18] hover:text-white">
+                <Icon class="text-xl" name="solar:logout-broken"/>
+                <span>Выход</span>
+            </button>
         </div>
         <div class="w-full lg:w-[70%] h-full">
             <!-- настройки -->
@@ -139,7 +143,7 @@
   /* состояния */
   const tabs = ref("settings")
   const isSupportModalShow = ref(false)
-  const { id } = useUserStore()
+  const { id, logout } = useUserStore()
   
   /* подключение хранилищ */
   const { showMessage } = useMessagesStore()
