@@ -63,7 +63,7 @@
                         <div class="flex flex-col gap-2">
                             <p class="text-base">Удаление аккаунта</p>
                         </div>
-                        <button class="cursor-pointer border border-red-400 px-4 py-1.5 rounded-xl font-semibold text-sm text-red-400 transition-all duration-500 hover:opacity-70">Удалить</button>
+                        <button @click="isDeleteModalShow = true" class="cursor-pointer border border-red-400 px-4 py-1.5 rounded-xl font-semibold text-sm text-red-400 transition-all duration-500 hover:opacity-70">Удалить</button>
                     </div>
                 </div>
             </div>
@@ -148,6 +148,18 @@
                     <button @click="isPassModalShow = false" class="cursor-pointer border border-white px-4 py-1.5 rounded-xl font-semibold text-sm text-white transition-all duration-500 hover:opacity-70">Отмена</button>
                 </div>
             </FormKit>
+        </ProfileModal>       
+
+        <ProfileModal :is-open="isDeleteModalShow" @close="isDeleteModalShow = false">
+            <p class="text-xl font-mono font-semibold text-red-400">Удаление аккаунта</p>
+            <p class="text-sm font-medium text-gray-400">Напишите "Удалить" для подтверждения</p>
+            <FormKit @submit="deleteAccount" type="form" :actions="false" messages-class="hidden" form-class="space-y-6">
+                <FormKit v-model="confirmDelete" validation="required" label="Удаление" label-class="hidden" name="delete" type="text" messages-class="text-[#E9556D] font-mono" outer-class="w-full" input-class="w-full px-4 py-1.5 rounded-xl border border-white/20 bg-[#14120B]"/>
+                <div class="flex items-center gap-2 md:justify-end">
+                    <button :disabled="confirmDelete !== 'Удалить'" :class="confirmDelete === 'Удалить' ? 'cursor-pointer hover:opacity-70' : 'cursor-not-allowed opacity-50'" class="border border-red-400 px-4 py-1.5 rounded-xl font-semibold text-sm text-red-400 transition-all duration-500">Удалить</button>
+                    <button @click="isDeleteModalShow = false" class="cursor-pointer border border-white px-4 py-1.5 rounded-xl font-semibold text-sm text-white transition-all duration-500 hover:opacity-70">Отмена</button>
+                </div>
+            </FormKit>
         </ProfileModal>        
     </div>
   </template>
@@ -159,11 +171,16 @@ useSeoMeta({
     lang: 'ru'
 })
 
+/* роутер */
+const router = useRouter()
+
 /* состояния */
 const tabs = ref("settings")
 const isSupportModalShow = ref(false)
 const isLoginModalShow = ref(false)
 const isPassModalShow = ref(false)
+const isDeleteModalShow = ref(false)
+const confirmDelete = ref("")
 
 /* подключение хранилищ и бд */
 const { showMessage } = useMessagesStore()
@@ -209,8 +226,21 @@ const contactSupport = () => {
 
 }
 
-const deleteAccount = () => {
+const deleteAccount = async() => {
+    if(confirmDelete.value === 'Удалить'){        
+        const { error } = await supabase
+        .from('website_users')
+        .delete()
+        .eq('id', id)
 
+        if (!error) {
+            router.push("/")
+            logout()
+            return showMessage("Аккаунт удалён!", true) 
+        } else {
+            return showMessage("Произошла ошибка при обновлении!", false) 
+        }
+    }
 }
 
 const updLogin = async(form) => {
