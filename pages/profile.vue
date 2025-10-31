@@ -7,9 +7,9 @@
                     <Icon class="text-2xl" name="material-symbols-light:edit"/>
                 </button>
             </div>
-            <div class="flex items-center gap-2">
-                <div class="w-1 h-1 rounded-full bg-green-400"></div>
-                <p class="-mt-1 text-sm font-mono font-medium text-green-400">Подписка активна</p>
+            <div class="flex items-center gap-2 -mt-2">
+                <div :class="user?.is_active ? 'bg-green-400' : 'bg-red-400'" class="w-1 h-1 rounded-full"></div>
+                <p :class="user?.is_active ? 'text-green-400' : 'text-red-400'" class="text-sm font-mono font-medium">{{ user?.is_active ? 'Подписка активна' : 'Подписка приостановлена' }}</p>
             </div>
             <div class="w-full h-px bg-white/20 my-2"></div>
             <button @click="tabs = 'settings'" class="cursor-pointer flex items-center gap-2 text-gray-400 text-base p-2 rounded-xl transition-all duration-500 hover:bg-[#201e18] hover:text-white">
@@ -74,11 +74,11 @@
                     <p class="font-medium ml-2 text-sm text-gray-400">Подписка</p>
                     <div class="flex max-md:flex-col gap-2 md:justify-between md:items-center rounded-xl border border-white/20 p-4">
                         <div class="flex flex-col gap-2">
-                            <p class="text-base">Текущий тариф: <span class="font-semibold">Free</span></p>
+                            <p class="text-base">Текущий тариф: <span class="font-semibold capitalize">{{ user?.subscription_type }}</span></p>
                             <p class="text-sm text-gray-400">Действует до: 03.09.2029</p>
                         </div>
-                        <button class="border border-green-400 text-green-400 px-4 py-1.5 rounded-xl font-semibold text-sm transition-all duration-500 hover:opacity-70">
-                            Активировать
+                        <button class="cursor-pointer border border-green-400 text-green-400 px-4 py-1.5 rounded-xl font-semibold text-sm transition-all duration-500 hover:opacity-70">
+                            {{ user?.subscription_type === 'free' ? 'Активировать' : 'Продлить' }}
                         </button>
                     </div>
                 </div>
