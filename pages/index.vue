@@ -8,7 +8,7 @@
             Общайтесь с умным ассистентом, создавайте изображения, загружайте файлы и получайте помощь в любых вопросах
         </p>
         
-        <NuxtLink to="/login" class="group relative flex items-center gap-2 rounded-xl px-8 py-3 w-fit mx-auto bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+        <NuxtLink :to="userStore.authenticated ? '/chat' : '/login'" class="group relative flex items-center gap-2 rounded-xl px-8 py-3 w-fit mx-auto bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
             <span class="font-semibold text-white">🚀 Начать</span>
             <span class="group-hover:translate-x-1 transition-transform">→</span>
         </NuxtLink>
@@ -85,4 +85,8 @@ useSeoMeta({
     title: 'Главная',
     lang: 'ru'
 })
+
+
+/* проверка входа */
+const userStore = useUserStore()
 </script>

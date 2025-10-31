@@ -67,6 +67,7 @@
                 </div>
             </div>
 
+            <!-- подписка -->
             <div v-if="tabs === 'subscribtion'" class="flex flex-col gap-6">
                 <div class="flex flex-col gap-2">
                     <p class="font-medium ml-2 text-sm text-gray-400">Подписка</p>
@@ -90,22 +91,22 @@
                         <p class="text-xl md:text-2xl font-mono font-semibold">Статистика пользователя</p>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="flex flex-col gap-2 bg-[#201e18] items-center text-center p-4 rounded-xl">
-                            <div class="flex items-center justify-center p-2 rounded-xl bg-green-500/10">
+                        <div class="group flex flex-col gap-2 bg-[#201e18] items-center text-center p-4 rounded-xl transition-all duration-500 hover:-translate-y-3 hover:border-green-500/30 hover:shadow-2xl hover:shadow-green-500/10">
+                            <div class="flex items-center justify-center p-2 rounded-xl bg-green-500/10 group-hover:scale-110 transition-transform duration-300">
                                 <Icon class="text-3xl" name="ic:round-message"/>
                             </div>
                             <p class="text-2xl md:text-3xl font-mono font-semibold">47</p>
                             <p class="text-green-400">Сообщений</p>
                         </div>
-                        <div class="flex flex-col gap-2 bg-[#201e18] items-center text-center p-4 rounded-xl">
-                            <div class="flex items-center justify-center p-2 rounded-xl bg-blue-500/10">
+                        <div class="group flex flex-col gap-2 bg-[#201e18] items-center text-center p-4 rounded-xl transition-all duration-500 hover:-translate-y-3 hover:border-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/10">
+                            <div class="flex items-center justify-center p-2 rounded-xl bg-blue-500/10 group-hover:scale-110 transition-transform duration-300">
                                 <Icon class="text-3xl" name="material-symbols:image"/>
                             </div>
                             <p class="text-2xl md:text-3xl font-mono font-semibold">3</p>
                             <p class="text-blue-400">Изображений</p>
                         </div>
-                        <div class="flex flex-col gap-2 bg-[#201e18] items-center text-center p-4 rounded-xl">
-                            <div class="flex items-center justify-center p-2 rounded-xl bg-orange-500/10">
+                        <div class="group flex flex-col gap-2 bg-[#201e18] items-center text-center p-4 rounded-xl transition-all duration-500 hover:-translate-y-3 hover:border-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/10">
+                            <div class="flex items-center justify-center p-2 rounded-xl bg-orange-500/10 group-hover:scale-110 transition-transform duration-300">
                             <Icon class="text-3xl" name="ic:round-smart-toy"/>
                             </div>
                             <p class="text-2xl md:text-3xl font-mono font-semibold">0/5</p>
