@@ -12,7 +12,7 @@
 
         <FormKit @submit="authUser" type="form" :actions="false" messages-class="hidden" form-class="border border-gray-700 rounded-2xl p-8 space-y-6">
           <FormKit validation="required" placeholder="user_123456" label="Логин" name="login" type="text" messages-class="text-[#E9556D] font-mono" outer-class="w-full" input-class="w-full px-4 py-1.5 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"/>
-          <FormKit validation="required" placeholder="······" label="Пароль" name="password" type="password" messages-class="text-[#E9556D] font-mono" outer-class="w-full" input-class="w-full px-4 py-1.5 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"/>
+          <FormKit validation="required|length:6" placeholder="······" label="Пароль" name="password" type="password" messages-class="text-[#E9556D] font-mono" outer-class="w-full" input-class="w-full px-4 py-1.5 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"/>
 
           <button :disabled="isAuthDisabled" :class="{isAuthDisabled : 'opacity-70'}" type="submit" class="group relative w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
               <span class="group-hover:translate-x-1 transition-transform">🚀</span>

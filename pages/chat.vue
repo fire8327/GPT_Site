@@ -23,7 +23,7 @@
                 <div class="flex items-center gap-4 justify-between">
                     <p class="text-xl font-mono font-semibold">Диалоги</p>
                     <button class="cursor-pointer rounded-full p-1 flex items-center justify-center bg-white">
-                        <Icon class="text-xl text-[#131313]" name="ic:round-plus"/>
+                        <Icon class="text-xl text-[#14120B]" name="ic:round-plus"/>
                     </button>
                 </div>
                 <div class="flex flex-col gap-2">
@@ -40,22 +40,22 @@
                             <Icon class="text-2xl" name="ant-design:paper-clip-outlined"/>
                         </button>
                         <button class="cursor-pointer rounded-full p-1 flex items-center justify-center bg-white">
-                            <Icon class="text-xl text-[#131313]" name="line-md:arrow-up"/>
+                            <Icon class="text-xl text-[#14120B]" name="line-md:arrow-up"/>
                         </button>
                     </div>
                 </div>
                 <div class="flex flex-col gap-2 items-center text-center">
                     <p class="text-base font-mono font-medium text-gray-400">Попробуйте эти примеры для начала</p>
                     <div class="flex items-center flex-wrap gap-4 text-sm font-medium">
-                        <button class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#131313] transition-all duration-500 hover:opacity-70">
+                        <button class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
                             <Icon class="text-2xl" name="line-md:question"/>
                             <span>Что такое ...</span>
                         </button>
-                        <button class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#131313] transition-all duration-500 hover:opacity-70">
+                        <button class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
                             <Icon class="text-2xl" name="akar-icons:pencil"/>
                             <span>Напиши документацию</span>
                         </button>
-                        <button class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#131313] transition-all duration-500 hover:opacity-70">
+                        <button class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
                             <Icon class="text-2xl" name="material-symbols-light:blur-short-rounded"/>
                             <span>Объясни кратко</span>
                         </button>

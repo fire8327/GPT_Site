@@ -2,8 +2,8 @@
     <div class="flex max-lg:flex-col gap-8 grow">
         <div class="w-full lg:w-[30%] flex flex-col gap-2">
             <div class="flex items-center gap-4">
-                <p class="font-medium text-xl">user_123456</p>
-                <button class="flex cursor-pointer">
+                <p class="font-medium text-xl">{{ user?.login ? `${user?.login}` : 'загрузка...' }}</p>
+                <button @click="isLoginModalShow = true" class="flex cursor-pointer">
                     <Icon class="text-2xl" name="material-symbols-light:edit"/>
                 </button>
             </div>
@@ -44,7 +44,7 @@
                             <p class="text-base">Смена пароля</p>
                             <p class="text-sm text-gray-400">Обновите пароль для входа в вашу учётную запись</p>
                         </div>
-                        <button class="bg-white px-4 py-1.5 rounded-xl font-semibold text-sm text-[#131313] transition-all duration-500 hover:opacity-70">Обновить</button>
+                        <button @click="isPassModalShow = true" class="cursor-pointer bg-white px-4 py-1.5 rounded-xl font-semibold text-sm text-[#14120B] transition-all duration-500 hover:opacity-70">Обновить</button>
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
@@ -52,8 +52,9 @@
                     <div class="flex max-md:flex-col gap-2 md:justify-between md:items-center rounded-xl border border-white/20 p-4">
                         <div class="flex flex-col gap-2">
                             <p class="text-base">ID пользователя</p>
+                            <p class="text-sm text-gray-400">{{ user?.id ? `${user?.id}` : 'загрузка...' }}</p>
                         </div>
-                        <button class="bg-white px-4 py-1.5 rounded-xl font-semibold text-sm text-[#131313] transition-all duration-500 hover:opacity-70">Скопировать ID</button>
+                        <button @click="copyToClipboard(user?.id)" class="cursor-pointer bg-white px-4 py-1.5 rounded-xl font-semibold text-sm text-[#14120B] transition-all duration-500 hover:opacity-70">Скопировать ID</button>
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
@@ -62,7 +63,7 @@
                         <div class="flex flex-col gap-2">
                             <p class="text-base">Удаление аккаунта</p>
                         </div>
-                        <button class="border border-red-400 px-4 py-1.5 rounded-xl font-semibold text-sm text-red-400 transition-all duration-500 hover:opacity-70">Удалить</button>
+                        <button class="cursor-pointer border border-red-400 px-4 py-1.5 rounded-xl font-semibold text-sm text-red-400 transition-all duration-500 hover:opacity-70">Удалить</button>
                     </div>
                 </div>
             </div>
@@ -121,68 +122,148 @@
             </div>
         </div>
 
-        <div v-if="isSupportModalShow" @click="isSupportModalShow = false" class="fixed inset-0 bg-black/3 backdrop-blur-[3px] z-[3]"></div>
-        <div v-if="isSupportModalShow" class="fixed w-[calc(100%-30px)] z-[4] md:w-1/2 lg:w-3/5 top-1/2 -translate-x-1/2 left-1/2 -translate-y-1/2 p-4 rounded-xl border border-white/20 bg-[#222222] flex flex-col gap-4">
-            <div class="flex items-center justify-between gap-4 w-full">
-                <p class="text-xl font-mono font-semibold">Связь с нами</p>
-                <button @click="isSupportModalShow = flase" class="cursor-pointer rounded-full bg-[#14120B] p-1 flex items-center justify-center">
-                    <Icon class="text-xl" name="material-symbols:close-rounded"/>
-                </button>
-            </div>
+        <!-- модальные окна -->
+        <ProfileModal :is-open="isSupportModalShow" @close="isSupportModalShow = false">
+            <p class="text-xl font-mono font-semibold">Связь с нами</p>
             <p class="text-gray-400">По всем вопросам технической поддержки, включая проблемы с оплатой и общие вопросы, пожалуйста, используйте телеграм <a href="https://t.me/fire83274" target="_blank" class="underline font-mono font-semibold text-white">@fire83274</a></p>
-        </div>
+        </ProfileModal>
+
+        <ProfileModal :is-open="isLoginModalShow" @close="isLoginModalShow = false">
+            <p class="text-xl font-mono font-semibold">Смена логина</p>
+            <FormKit @submit="updLogin" type="form" :actions="false" messages-class="hidden" form-class="space-y-6">
+                <FormKit :value="user?.login" validation="required" placeholder="user_123456" label="Логин" label-class="hidden" name="login" type="text" messages-class="text-[#E9556D] font-mono" outer-class="w-full" input-class="w-full px-4 py-1.5 rounded-xl border border-white/20 bg-[#14120B]"/>
+                <div class="flex items-center gap-2 md:justify-end">
+                    <button class="cursor-pointer bg-white px-4 py-1.5 rounded-xl font-semibold text-sm text-[#14120B] transition-all duration-500 hover:opacity-70">Обновить</button>
+                    <button @click="isLoginModalShow = false" class="cursor-pointer border border-white px-4 py-1.5 rounded-xl font-semibold text-sm text-white transition-all duration-500 hover:opacity-70">Отмена</button>
+                </div>
+            </FormKit>
+        </ProfileModal>
+        
+        <ProfileModal :is-open="isPassModalShow" @close="isPassModalShow = false">
+            <p class="text-xl font-mono font-semibold">Смена пароля</p>
+            <FormKit @submit="updPass" type="form" :actions="false" messages-class="hidden" form-class="space-y-6">
+                <FormKit validation="required|length:6" placeholder="······" label="Пароль" label-class="hidden" name="password" type="text" messages-class="text-[#E9556D] font-mono" outer-class="w-full" input-class="w-full px-4 py-1.5 rounded-xl border border-white/20 bg-[#14120B]"/>
+                <div class="flex items-center gap-2 md:justify-end">
+                    <button class="cursor-pointer bg-white px-4 py-1.5 rounded-xl font-semibold text-sm text-[#14120B] transition-all duration-500 hover:opacity-70">Обновить</button>
+                    <button @click="isPassModalShow = false" class="cursor-pointer border border-white px-4 py-1.5 rounded-xl font-semibold text-sm text-white transition-all duration-500 hover:opacity-70">Отмена</button>
+                </div>
+            </FormKit>
+        </ProfileModal>        
     </div>
   </template>
   
-  <script setup>
-  /* название и язык страницы */
-  useSeoMeta({
+<script setup>
+/* название и язык страницы */
+useSeoMeta({
     title: 'Профиль',
     lang: 'ru'
-  })
-  
-  /* состояния */
-  const tabs = ref("settings")
-  const isSupportModalShow = ref(false)
-  const { id, logout } = useUserStore()
-  
-  /* подключение хранилищ */
-  const { showMessage } = useMessagesStore()
- 
-  
-  /* загрузка данных пользователя */
-  onMounted(async () => {
-    
-  })
-  
-  /* загрузка данных пользователя */
-  const loadUserData = async () => {
-   
-  }
-  
-  /* загрузка статистики */
-  const loadUserStats = async () => {
+})
 
-  }
-  
-  
-  const getActivityIcon = (type) => {
-    const icons = {
-      message: '💬',
-      image: '🎨',
-      login: '🔐',
-      file: '📁',
-      payment: '💳'
+/* состояния */
+const tabs = ref("settings")
+const isSupportModalShow = ref(false)
+const isLoginModalShow = ref(false)
+const isPassModalShow = ref(false)
+
+/* подключение хранилищ и бд */
+const { showMessage } = useMessagesStore()
+const { id, logout } = useUserStore()
+const supabase = useSupabaseClient()
+
+/* первоначальная загрузка данных */
+onMounted(async () => {
+    loadUserData()
+})
+
+/* загрузка данных пользователя */
+const user = ref()
+const loadUserData = async () => {
+    const { data, error } = await supabase
+    .from('website_users')
+    .select("*")
+    .eq('id', id)
+    .single()
+
+    user.value = data
+}
+
+/* загрузка статистики */
+const loadUserStats = async () => {
+
+}
+
+
+const getActivityIcon = (type) => {
+const icons = {
+    message: '💬',
+    image: '🎨',
+    login: '🔐',
+    file: '📁',
+    payment: '💳'
+}
+return icons[type] || '⚡'
+}
+
+/* действия */  
+const contactSupport = () => {
+
+}
+
+const deleteAccount = () => {
+
+}
+
+const updLogin = async(form) => {
+    const { data, error } = await supabase
+    .from('website_users')
+    .update({ login: form.login })
+    .eq('id', id)
+    .select()
+
+    if (!error) {
+        loadUserData()
+        isLoginModalShow.value = false
+        return showMessage("Успешно обновлено!", true) 
+    } else {
+        return showMessage("Произошла ошибка при обновлении!", false) 
     }
-    return icons[type] || '⚡'
-  }
-  
-  /* действия */  
-  const contactSupport = () => {
-    
-  }
-  
-  const deleteAccount = () => {
+}
 
+const updPass = async(form) => {
+    const { data, error } = await supabase
+    .from('website_users')
+    .update({ password: form.password })
+    .eq('id', id)
+    .select()
+
+    if (!error) {
+        loadUserData()
+        isPassModalShow.value = false
+        return showMessage("Успешно обновлено!", true) 
+    } else {
+        return showMessage("Произошла ошибка при обновлении!", false) 
+    }
+}
+
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    console.log('Текст скопирован: ', text)
+    return showMessage('Текст скопирован!', true)
+  } catch (err) {
+    console.error('Ошибка копирования: ', err)
+    // Fallback для старых браузеров
+    try {
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      return showMessage('Текст скопирован!', true)
+    } catch (fallbackErr) {
+      return showMessage('Не удалось скопировать текст', false)
+    }
   }
-  </script>
+}
+</script>
