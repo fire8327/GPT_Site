@@ -1,32 +1,69 @@
 <template>
-    <div class="h-screen flex flex-col">
-        <div class="flex items-center justify-between border-b border-white/20 pb-4">
-            <button @click="isPanelShow = !isPanelShow" class="cursor-pointer flex max-md:hidden">
+    <div class="h-screen flex flex-col overflow-hidden">
+        <!-- Хедер с кнопками режимов -->
+        <div class="flex items-center justify-between border-b border-white/20 pb-3 md:pb-4 px-2 md:px-0 flex-shrink-0">
+            <!-- Мобильная кнопка меню -->
+            <button @click="isMobilePanelShow = !isMobilePanelShow" class="cursor-pointer flex md:hidden">
+                <Icon class="text-2xl md:text-3xl" name="material-symbols:menu-rounded"/>
+            </button>
+            <button @click="isPanelShow = !isPanelShow" class="cursor-pointer hidden md:flex">
                 <Icon class="text-3xl" name="material-symbols:menu-rounded"/>
             </button>
-            <div class="flex items-center gap-4">
-                <button @click="chatMode = 'text'" :class="chatMode === 'text' ? 'bg-[#201e18]' : ''" class="cursor-pointer flex items-center gap-2 rounded-xl p-2 border border-white/20 transition-all duration-500">
-                    <Icon class="text-3xl" name="cuida:text-outline"/>
-                    <span class="text-xl font-mono font-semibold">Текст</span>   
+            <div class="flex items-center gap-2 md:gap-4">
+                <button @click="chatMode = 'text'" :class="chatMode === 'text' ? 'bg-[#201e18]' : ''" class="cursor-pointer flex items-center gap-1.5 md:gap-2 rounded-xl p-1.5 md:p-2 border border-white/20 transition-all duration-500">
+                    <Icon class="text-xl md:text-3xl" name="cuida:text-outline"/>
+                    <span class="text-sm md:text-xl font-mono font-semibold">Текст</span>   
                 </button>
-                <button @click="chatMode = 'image'" :class="chatMode === 'image' ? 'bg-[#201e18]' : ''" class="cursor-pointer flex items-center gap-2 rounded-xl p-2 border border-white/20 transition-all duration-500">
-                    <Icon class="text-3xl" name="material-symbols:image"/>
-                    <span class="text-xl font-mono font-semibold">Изображения</span>   
+                <button @click="chatMode = 'image'" :class="chatMode === 'image' ? 'bg-[#201e18]' : ''" class="cursor-pointer flex items-center gap-1.5 md:gap-2 rounded-xl p-1.5 md:p-2 border border-white/20 transition-all duration-500">
+                    <Icon class="text-xl md:text-3xl" name="material-symbols:image"/>
+                    <span class="text-sm md:text-xl font-mono font-semibold max-md:hidden">Изображения</span>   
                 </button>
             </div>
         </div>
-        <div :class="{'gap-8' : isPanelShow}" class="flex max-md:flex-col grow">
+        
+        <!-- Мобильная панель диалогов -->
+        <div v-if="isMobilePanelShow" class="md:hidden border-b border-white/20 pb-4 px-4 flex-shrink-0 max-h-[40vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center gap-4 justify-between py-4">
+                <p class="text-lg font-mono font-semibold">Диалоги</p>
+                <button @click="createNewDialog" class="cursor-pointer rounded-full p-1 flex items-center justify-center bg-white">
+                    <Icon class="text-xl text-[#14120B]" name="ic:round-plus"/>
+                </button>
+            </div>
+            <div class="flex flex-col gap-2">
+                <div 
+                    v-for="dialog in dialogs" 
+                    :key="dialog.id"
+                    :class="currentDialogId === dialog.id ? 'bg-[#201e18]' : ''"
+                    class="group flex items-center gap-2 px-4 py-1.5 rounded-xl border border-white/20 transition-all duration-500 hover:bg-[#201e18]">
+                    <button 
+                        @click="switchDialog(dialog.id); isMobilePanelShow = false"
+                        class="flex-1 text-left line-clamp-1 cursor-pointer text-sm">
+                        {{ dialog.title || `Диалог ${dialog.id}` }}
+                    </button>
+                    <button 
+                        @click.stop="deleteDialog(dialog.id)"
+                        class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer flex">
+                        <Icon class="text-lg text-red-400" name="material-symbols:delete-outline"/>
+                    </button>
+                </div>
+                <p v-if="dialogs.length === 0" class="text-center text-gray-400 text-xs py-4">Нет диалогов</p>
+            </div>
+        </div>
+        
+        <!-- Основной контент -->
+        <div :class="{'gap-4 md:gap-8' : isPanelShow}" class="flex max-md:flex-col grow min-h-0 overflow-hidden">
+            <!-- Десктопная панель диалогов -->
             <div :class="isPanelShow
                 ? 'md:w-1/3 lg:w-[30%] pt-4 pr-4 border-r border-white/20 opacity-100'
                 : 'w-0 md:w-0 lg:w-0 pr-0 border-r-0 opacity-0 pointer-events-none'"
-                class="w-full max-md:hidden overflow-hidden flex-none flex flex-col gap-4 transition-all duration-500">
-                <div class="flex items-center gap-4 justify-between">
+                class="w-full max-md:hidden overflow-hidden flex-none flex flex-col gap-4 transition-all duration-500 min-h-0">
+                <div class="flex items-center gap-4 justify-between flex-shrink-0">
                     <p class="text-xl font-mono font-semibold">Диалоги</p>
                     <button @click="createNewDialog" class="cursor-pointer rounded-full p-1 flex items-center justify-center bg-white">
                         <Icon class="text-xl text-[#14120B]" name="ic:round-plus"/>
                     </button>
                 </div>
-                <div class="flex flex-col gap-2 overflow-y-auto">
+                <div class="flex flex-col gap-2 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                     <div 
                         v-for="dialog in dialogs" 
                         :key="dialog.id"
@@ -46,23 +83,28 @@
                     <p v-if="dialogs.length === 0" class="text-center text-gray-400 text-sm py-4">Нет диалогов</p>
                 </div>
             </div>
-            <div class="grow flex flex-col gap-4 h-full">
-                <div ref="messagesContainer" class="flex flex-col gap-6 grow overflow-y-auto mt-4 relative">
+            
+            <!-- Блок сообщений и ввода -->
+            <div class="grow flex flex-col gap-2 md:gap-4 min-h-0 overflow-hidden">
+                <div ref="messagesContainer" class="flex flex-col gap-4 md:gap-6 flex-1 overflow-y-auto custom-scrollbar px-2 md:px-0 pt-2 md:pt-4 pb-2 relative min-h-0">
                     <div v-if="messages.length === 0 && chatMode === 'text' && dialogs.length > 0" class="flex items-center justify-center h-full">
-                        <div class="flex flex-col gap-2 items-center text-center">
-                            <p class="text-base font-mono font-medium text-gray-400">Попробуйте эти примеры для начала</p>
-                            <div class="flex items-center flex-wrap gap-4 text-sm font-medium">
-                                <button @click="sendExampleMessage('Что такое искусственный интеллект?')" class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
-                                    <Icon class="text-2xl" name="line-md:question"/>
-                                    <span>Что такое ...</span>
+                        <div class="flex flex-col gap-2 md:gap-4 items-center text-center px-4">
+                            <p class="text-sm md:text-base font-mono font-medium text-gray-400">Попробуйте эти примеры для начала</p>
+                            <div class="flex items-center flex-wrap justify-center gap-2 md:gap-4 text-xs md:text-sm font-medium">
+                                <button @click="sendExampleMessage('Что такое искусственный интеллект?')" class="flex items-center gap-1.5 md:gap-2 rounded-full px-3 md:px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
+                                    <Icon class="text-xl md:text-2xl" name="line-md:question"/>
+                                    <span class="hidden sm:inline">Что такое ...</span>
+                                    <span class="sm:hidden">Что такое?</span>
                                 </button>
-                                <button @click="sendExampleMessage('Напиши документацию для моего проекта')" class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
-                                    <Icon class="text-2xl" name="akar-icons:pencil"/>
-                                    <span>Напиши документацию</span>
+                                <button @click="sendExampleMessage('Напиши документацию для моего проекта')" class="flex items-center gap-1.5 md:gap-2 rounded-full px-3 md:px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
+                                    <Icon class="text-xl md:text-2xl" name="akar-icons:pencil"/>
+                                    <span class="hidden sm:inline">Напиши документацию</span>
+                                    <span class="sm:hidden">Документация</span>
                                 </button>
-                                <button @click="sendExampleMessage('Объясни кратко принцип работы нейронных сетей')" class="flex items-center gap-2 rounded-full px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
-                                    <Icon class="text-2xl" name="material-symbols-light:blur-short-rounded"/>
-                                    <span>Объясни кратко</span>
+                                <button @click="sendExampleMessage('Объясни кратко принцип работы нейронных сетей')" class="flex items-center gap-1.5 md:gap-2 rounded-full px-3 md:px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
+                                    <Icon class="text-xl md:text-2xl" name="material-symbols-light:blur-short-rounded"/>
+                                    <span class="hidden sm:inline">Объясни кратко</span>
+                                    <span class="sm:hidden">Объясни</span>
                                 </button>
                             </div>
                         </div>
@@ -73,58 +115,60 @@
                             <p class="text-sm text-gray-500">В разработке...</p>
                         </div>
                     </div>
-                    <div v-for="msg in messages" :key="msg.id" class="flex w-full group"
+                    <div v-for="msg in messages" :key="msg.id" class="flex w-full group px-1"
                         :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
                         <div :class="msg.role === 'user' 
                             ? 'bg-white text-[#14120B]' 
                             : 'bg-[#201e18] border border-white/20'"
-                            class="max-w-[80%] rounded-xl p-4 text-sm">
+                            class="max-w-[85%] md:max-w-[80%] rounded-xl p-3 md:p-4 text-xs md:text-sm break-words">
                             <div v-if="msg.role === 'assistant'" class="flex items-start gap-2 w-full">
-                                <div class="flex-1 formatted-message [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_pre]:my-2 [&_pre]:whitespace-pre [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:block [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:block [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:block [&_ul]:block [&_ol]:block [&_a]:underline [&_a]:text-blue-400 [&_a:hover]:text-blue-300" v-html="formatMessage(msg.content)"></div>
+                                <div class="flex-1 formatted-message [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_code]:text-xs [&_pre]:my-2 [&_pre]:whitespace-pre [&_pre]:text-xs [&_h1]:text-lg md:[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:block [&_h2]:text-base md:[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:block [&_h3]:text-sm md:[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:block [&_ul]:block [&_ol]:block [&_a]:underline [&_a]:text-blue-400 [&_a:hover]:text-blue-300" v-html="formatMessage(msg.content)"></div>
                                 <button 
                                     @click="copyMessage(msg.content)"
-                                    class="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0 p-1 hover:bg-white/10 rounded"
+                                    class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0 p-1 hover:bg-white/10 rounded"
                                     title="Копировать">
-                                    <Icon class="text-lg" name="material-symbols:content-copy-outline"/>
+                                    <Icon class="text-base md:text-lg" name="material-symbols:content-copy-outline"/>
                                 </button>
                             </div>
-                            <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
-                            <p class="text-xs mt-2 opacity-60">{{ formatTime(msg.created_at) }}</p>
+                            <div v-else class="whitespace-pre-wrap break-words">{{ msg.content }}</div>
+                            <p class="text-[10px] md:text-xs mt-1.5 md:mt-2 opacity-60">{{ formatTime(msg.created_at) }}</p>
                         </div>
                     </div>
-                    <div v-if="isLoading" class="flex justify-start">
-                        <div class="bg-[#201e18] border border-white/20 rounded-xl p-4 text-sm flex items-center gap-2">
-                            <Icon class="text-xl animate-spin" name="line-md:loading-loop"/>
+                    <div v-if="isLoading" class="flex justify-start px-1">
+                        <div class="bg-[#201e18] border border-white/20 rounded-xl p-3 md:p-4 text-xs md:text-sm flex items-center gap-2">
+                            <Icon class="text-lg md:text-xl animate-spin" name="line-md:loading-loop"/>
                             <span>Думаю...</span>
                         </div>
                     </div>
                 </div>
-                <div v-if="chatMode === 'text'" class="relative w-full flex-none group">
+                
+                <!-- Поле ввода -->
+                <div v-if="chatMode === 'text'" class="relative w-full flex-none group px-2 md:px-0 pb-2 md:pb-0">
                     <textarea 
                         ref="textareaInput"
                         v-model="currentMessage"
                         @input="autoResizeTextarea"
                         @keydown.enter="handleSendMessage"
                         placeholder="Попроси ИИ решить твою проблему..." 
-                        class="text-sm p-4 pr-20 rounded-xl border border-white/20 w-full bg-[#14120B] resize-none overflow-hidden"
-                        style="min-height: 48px; max-height: 200px;"></textarea>
-                    <div class="flex items-center gap-2 absolute bottom-4 right-4">
+                        class="text-xs md:text-sm p-3 md:p-4 pr-16 md:pr-20 rounded-xl border border-white/20 w-full bg-[#14120B] resize-none overflow-hidden"
+                        style="min-height: 44px; max-height: 150px;"></textarea>
+                    <div class="flex items-center gap-1.5 md:gap-2 absolute bottom-3 md:bottom-4 right-3 md:right-4">
                         <button 
                             @click="handleFileAttach"
                             class="cursor-pointer flex items-center justify-center"
                             title="Прикрепить файл">
-                            <Icon class="text-xl" name="ant-design:paper-clip-outlined"/>
+                            <Icon class="text-lg md:text-xl" name="ant-design:paper-clip-outlined"/>
                         </button>
                         <button @click="sendMessage" 
                             :disabled="isLoading || !currentMessage.trim()"
                             :class="isLoading || !currentMessage.trim() ? 'opacity-50 cursor-not-allowed' : ''"
                             class="cursor-pointer rounded-full p-1 flex items-center justify-center bg-white">
-                            <Icon class="text-xl text-[#14120B]" name="line-md:arrow-up"/>
+                            <Icon class="text-lg md:text-xl text-[#14120B]" name="line-md:arrow-up"/>
                         </button>
                     </div>
                 </div>
-                <div v-if="chatMode === 'image'" class="relative w-full flex-none">
-                    <div class="text-sm p-4 rounded-xl border border-white/20 w-full bg-[#14120B] text-center text-gray-400">
+                <div v-if="chatMode === 'image'" class="relative w-full flex-none px-2 md:px-0">
+                    <div class="text-xs md:text-sm p-3 md:p-4 rounded-xl border border-white/20 w-full bg-[#14120B] text-center text-gray-400">
                         Режим генерации изображений в разработке
                     </div>
                 </div>
@@ -142,6 +186,7 @@ useSeoMeta({
 
 /* показ боковой панели */
 const isPanelShow = ref(true)
+const isMobilePanelShow = ref(false)
 
 /* подключение хранилищ и бд */
 const { id, authenticated } = useUserStore()

@@ -8,7 +8,8 @@
     }
 
     #__nuxt{
-        @apply flex flex-col min-h-screen bg-[#14120B] text-[#F2F2F2] overflow-x-hidden text-lg
+        @apply flex flex-col min-h-screen bg-[#14120B] text-[#F2F2F2] overflow-x-hidden text-lg;
+       
     }
         
     :root{
@@ -60,5 +61,37 @@
       display: -webkit-box;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 3;
+    }
+
+    /* Кастомный скроллбар */
+    .custom-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+      transition: background 0.2s ease;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+      background-clip: padding-box;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:active {
+      background: rgba(255, 255, 255, 0.4);
+      background-clip: padding-box;
     }
   }
