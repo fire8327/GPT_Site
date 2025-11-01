@@ -17,9 +17,9 @@ export default defineNuxtRouteMiddleware((to) => {
     const requiresAuth = routesRequiringAuth.includes(to.path)
     const notRequiresAuth = routesNotRequiringAuth.includes(to.path)
 
-    // Если маршрут требует аутентификации, но пользователь не аутентифицирован, перенаправляем на /auth
+    // Если маршрут требует аутентификации, но пользователь не аутентифицирован, перенаправляем на /login
     if (requiresAuth && !isAuthenticated) {
-        return navigateTo('/auth')
+        return navigateTo('/login')
     }
 
     // Если маршрут не требует аутентификации, но пользователь аутентифицирован, перенаправляем на /profile

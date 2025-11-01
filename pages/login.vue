@@ -108,8 +108,11 @@ const authUser = async(formData) => {
     }
 
     showMessage('Успешный вход!', true)
+    console.log('Login successful, user ID:', user.id, 'Type:', typeof user.id)
     login(user.id)
     isAuthDisabled.value = false
+    // Небольшая задержка чтобы cookie успел сохраниться
+    await nextTick()
     router.push('/chat')
 } 
   </script>
