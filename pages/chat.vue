@@ -120,9 +120,9 @@
                         <div :class="msg.role === 'user' 
                             ? 'bg-white text-[#14120B]' 
                             : 'bg-[#201e18] border border-white/20'"
-                            class="max-w-[85%] md:max-w-[80%] rounded-xl p-3 md:p-4 text-xs md:text-sm break-words">
-                            <div v-if="msg.role === 'assistant'" class="flex items-start gap-2 w-full">
-                                <div class="flex-1 formatted-message [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_code]:text-xs [&_pre]:my-2 [&_pre]:whitespace-pre [&_pre]:text-xs [&_h1]:text-lg md:[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:block [&_h2]:text-base md:[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:block [&_h3]:text-sm md:[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:block [&_ul]:block [&_ol]:block [&_a]:underline [&_a]:text-blue-400 [&_a:hover]:text-blue-300" v-html="formatMessage(msg.content)"></div>
+                            class="max-w-[85%] md:max-w-[80%] rounded-xl p-3 md:p-4 text-xs md:text-sm break-words overflow-hidden">
+                            <div v-if="msg.role === 'assistant'" class="flex items-start gap-2 w-full min-w-0">
+                                <div class="flex-1 min-w-0 formatted-message [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_code]:text-[10px] md:[&_code]:text-xs [&_code]:break-all [&_pre]:my-2 [&_pre]:whitespace-pre [&_pre]:overflow-x-auto [&_pre]:custom-scrollbar [&_pre]:max-w-full [&_pre]:min-w-0 [&_pre_code]:block [&_pre_code]:text-[10px] md:[&_pre_code]:text-xs [&_pre_code]:break-all [&_pre_code]:max-w-full [&_h1]:text-lg md:[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:block [&_h1]:break-words [&_h2]:text-base md:[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:block [&_h2]:break-words [&_h3]:text-sm md:[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:block [&_h3]:break-words [&_ul]:block [&_ul]:break-words [&_ol]:block [&_ol]:break-words [&_li]:break-words [&_p]:break-words [&_a]:underline [&_a]:text-blue-400 [&_a:hover]:text-blue-300 [&_a]:break-all" v-html="formatMessage(msg.content)"></div>
                                 <button 
                                     @click="copyMessage(msg.content)"
                                     class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0 p-1 hover:bg-white/10 rounded"
@@ -150,7 +150,7 @@
                         @input="autoResizeTextarea"
                         @keydown.enter="handleSendMessage"
                         placeholder="Попроси ИИ решить твою проблему..." 
-                        class="text-xs md:text-sm p-3 md:p-4 pr-16 md:pr-20 rounded-xl border border-white/20 w-full bg-[#14120B] resize-none overflow-hidden"
+                        class="text-xs md:text-sm p-3 md:p-4 pr-16 md:pr-20 rounded-xl border border-white/20 w-full bg-[#14120B] resize-none overflow-hidden focus:outline-none"
                         style="min-height: 44px; max-height: 150px;"></textarea>
                     <div class="flex items-center gap-1.5 md:gap-2 absolute bottom-3 md:bottom-4 right-3 md:right-4">
                         <button 
@@ -504,7 +504,7 @@ const formatMessage = (text) => {
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-        codeBlocks.push(`<pre class="bg-black/30 p-3 rounded my-2 overflow-x-auto border border-white/10"><code class="text-xs font-mono whitespace-pre">${escapedCode}</code></pre>`)
+        codeBlocks.push(`<pre class="bg-black/30 p-2 md:p-3 rounded my-2 overflow-x-auto border border-white/10 custom-scrollbar max-w-full min-w-0"><code class="text-[10px] md:text-xs font-mono whitespace-pre block break-all max-w-full">${escapedCode}</code></pre>`)
         return id
     })
     
@@ -516,7 +516,7 @@ const formatMessage = (text) => {
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-        inlineCodes.push(`<code class="bg-black/30 px-1.5 py-0.5 rounded text-xs font-mono border border-white/10">${escapedCode}</code>`)
+        inlineCodes.push(`<code class="bg-black/30 px-1.5 py-0.5 rounded text-[10px] md:text-xs font-mono border border-white/10 break-all">${escapedCode}</code>`)
         return id
     })
     

@@ -94,4 +94,33 @@
       background: rgba(255, 255, 255, 0.4);
       background-clip: padding-box;
     }
+
+    /* Улучшенная обработка переполнения для сообщений */
+    .formatted-message {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .formatted-message pre {
+      max-width: 100%;
+      min-width: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .formatted-message code {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-all;
+    }
+
+    .formatted-message pre code {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-all;
+      white-space: pre;
+    }
   }
