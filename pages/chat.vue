@@ -100,21 +100,21 @@
                                     <Icon class="text-xl md:text-2xl" name="akar-icons:pencil"/>
                                     <span class="hidden sm:inline">Напиши документацию</span>
                                     <span class="sm:hidden">Документация</span>
-                                </button>
+                        </button>
                                 <button @click="sendExampleMessage('Объясни кратко принцип работы нейронных сетей')" class="flex items-center gap-1.5 md:gap-2 rounded-full px-3 md:px-4 py-1.5 bg-white text-[#14120B] transition-all duration-500 hover:opacity-70">
                                     <Icon class="text-xl md:text-2xl" name="material-symbols-light:blur-short-rounded"/>
                                     <span class="hidden sm:inline">Объясни кратко</span>
                                     <span class="sm:hidden">Объясни</span>
-                                </button>
-                            </div>
-                        </div>
+                        </button>
+                    </div>
+                </div>
                     </div>
                     <div v-if="messages.length === 0 && chatMode === 'image'" class="flex items-center justify-center h-full">
-                        <div class="flex flex-col gap-2 items-center text-center">
-                            <p class="text-base font-mono font-medium text-gray-400">Режим генерации изображений</p>
-                            <p class="text-sm text-gray-500">В разработке...</p>
-                        </div>
-                    </div>
+                        <div class="flex flex-col gap-2 items-center text-center px-4">
+                            <p class="text-sm md:text-base font-mono font-medium text-gray-400">Режим генерации изображений</p>
+                            <p class="text-xs md:text-sm text-gray-500">Опишите изображение в поле ввода ниже, и ИИ сгенерирует его для вас</p>
+                </div>
+            </div>
                     <div v-for="msg in messages" :key="msg.id" class="flex w-full group px-1"
                         :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
                         <div :class="msg.role === 'user' 
@@ -122,8 +122,26 @@
                             : 'bg-[#201e18] border border-white/20'"
                             class="max-w-[85%] md:max-w-[80%] rounded-xl p-3 md:p-4 text-xs md:text-sm break-words overflow-hidden">
                             <div v-if="msg.role === 'assistant'" class="flex items-start gap-2 w-full min-w-0">
-                                <div class="flex-1 min-w-0 formatted-message [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_code]:text-[10px] md:[&_code]:text-xs [&_code]:break-all [&_pre]:my-2 [&_pre]:whitespace-pre [&_pre]:overflow-x-auto [&_pre]:custom-scrollbar [&_pre]:max-w-full [&_pre]:min-w-0 [&_pre_code]:block [&_pre_code]:text-[10px] md:[&_pre_code]:text-xs [&_pre_code]:break-all [&_pre_code]:max-w-full [&_h1]:text-lg md:[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:block [&_h1]:break-words [&_h2]:text-base md:[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:block [&_h2]:break-words [&_h3]:text-sm md:[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:block [&_h3]:break-words [&_ul]:block [&_ul]:break-words [&_ol]:block [&_ol]:break-words [&_li]:break-words [&_p]:break-words [&_a]:underline [&_a]:text-blue-400 [&_a:hover]:text-blue-300 [&_a]:break-all" v-html="formatMessage(msg.content)"></div>
+                                <!-- Отображение сгенерированного изображения -->
+                                <div v-if="msg.generatedImage" class="flex-1 min-w-0">
+                                    <div class="relative group/image">
+                                        <img 
+                                            :src="msg.generatedImage" 
+                                            :alt="msg.content || 'Сгенерированное изображение'"
+                                            class="max-w-full rounded-lg border border-white/20"
+                                            @error="handleImageError">
+                                        <button
+                                            @click="downloadGeneratedImage(msg.generatedImage, getImageFilename(msg.content))"
+                                            class="absolute top-2 right-2 opacity-0 group-hover/image:opacity-100 transition-opacity bg-[#14120B] rounded-lg p-2 cursor-pointer hover:bg-[#201e18] border border-white/20 flex"
+                                            title="Скачать изображение">
+                                            <Icon class="text-lg text-white" name="material-symbols:download"/>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Обычное текстовое сообщение -->
+                                <div v-else class="flex-1 min-w-0 formatted-message [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_code]:text-[10px] md:[&_code]:text-xs [&_code]:break-all [&_pre]:my-2 [&_pre]:whitespace-pre [&_pre]:overflow-x-auto [&_pre]:custom-scrollbar [&_pre]:max-w-full [&_pre]:min-w-0 [&_pre_code]:block [&_pre_code]:text-[10px] md:[&_pre_code]:text-xs [&_pre_code]:break-all [&_pre_code]:max-w-full [&_h1]:text-lg md:[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:block [&_h1]:break-words [&_h2]:text-base md:[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:block [&_h2]:break-words [&_h3]:text-sm md:[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:block [&_h3]:break-words [&_ul]:block [&_ul]:break-words [&_ol]:block [&_ol]:break-words [&_li]:break-words [&_p]:break-words [&_a]:underline [&_a]:text-blue-400 [&_a:hover]:text-blue-300 [&_a]:break-all" v-html="formatMessage(msg.content)"></div>
                                 <button 
+                                    v-if="!msg.generatedImage"
                                     @click="copyMessage(msg.content)"
                                     class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0 p-1 hover:bg-white/10 rounded"
                                     title="Копировать">
@@ -144,14 +162,14 @@
                                             <span class="truncate max-w-[100px] md:max-w-[150px]">{{ file.name }}</span>
                                             <span class="text-gray-400">({{ formatFileSize(file.size) }})</span>
                                             <Icon class="text-xs text-gray-400 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" name="material-symbols:download"/>
-                                        </button>
+                        </button>
                                     </div>
                                 </div>
                             </div>
                             <p class="text-[10px] md:text-xs mt-1.5 md:mt-2 opacity-60">{{ formatTime(msg.created_at) }}</p>
                         </div>
                     </div>
-                    <div v-if="isLoading[currentDialogId]" class="flex justify-start px-1">
+                    <div v-if="isLoading[currentDialogId] || (isGeneratingImage && chatMode === 'image')" class="flex justify-start px-1">
                         <div class="bg-[#201e18] border border-white/20 rounded-xl p-3 md:p-4 text-xs md:text-sm flex items-center gap-2">
                             <Icon class="text-lg md:text-xl animate-spin" name="line-md:loading-loop"/>
                             <span>Думаю...</span>
@@ -175,9 +193,9 @@
                                 class="ml-1 hover:bg-white/10 rounded p-0.5 transition-colors flex cursor-pointer"
                                 title="Удалить файл">
                                 <Icon class="text-sm text-red-400" name="material-symbols:close"/>
-                            </button>
-                        </div>
+                        </button>
                     </div>
+                </div>
                     
                     <!-- Скрытый input для файлов -->
                     <input 
@@ -211,9 +229,39 @@
                         </button>
                     </div>
                 </div>
-                <div v-if="chatMode === 'image'" class="relative w-full flex-none px-2 md:px-0">
-                    <div class="text-xs md:text-sm p-3 md:p-4 rounded-xl border border-white/20 w-full bg-[#14120B] text-center text-gray-400">
-                        Режим генерации изображений в разработке
+                <div v-if="chatMode === 'image'" class="relative w-full flex-none px-2 md:px-0 pb-2 md:pb-0">
+                    <div class="flex flex-col gap-3 md:gap-4">
+                        <!-- Выбор формата (соотношения сторон) -->
+                        <div class="flex flex-wrap items-center gap-2 md:gap-3 text-xs md:text-sm">
+                            <span class="text-gray-400">Формат:</span>
+                            <button 
+                                v-for="format in [{ratio: '1:1', label: '1:1'}, {ratio: '16:9', label: '16:9'}, {ratio: '9:16', label: '9:16'}, {ratio: '4:3', label: '4:3'}, {ratio: '21:9', label: '21:9'}]" 
+                                :key="format.ratio"
+                                @click="imageSize = format.ratio"
+                                :class="imageSize === format.ratio ? 'bg-white text-[#14120B]' : 'bg-[#201e18] border border-white/20'"
+                                class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                                {{ format.label }}
+                            </button>
+                        </div>
+                        
+                        <!-- Поле ввода промпта -->
+                        <div class="relative">
+                            <textarea 
+                                ref="imagePromptInput"
+                                v-model="imagePrompt"
+                                @keydown.enter="generateImage"
+                                placeholder="Опишите изображение, которое хотите сгенерировать..." 
+                                class="text-xs md:text-sm p-3 md:p-4 pr-16 md:pr-20 rounded-xl border border-white/20 w-full bg-[#14120B] resize-none overflow-hidden focus:outline-none"
+                                style="min-height: 80px; max-height: 150px;"></textarea>
+                            <button 
+                                @click="generateImage" 
+                                :disabled="isGeneratingImage || !imagePrompt.trim()"
+                                :class="isGeneratingImage || !imagePrompt.trim() ? 'opacity-50 cursor-not-allowed' : ''"
+                                class="absolute bottom-3 md:bottom-4 right-3 md:right-4 cursor-pointer rounded-full p-1 flex items-center justify-center bg-white">
+                                <Icon v-if="isGeneratingImage" class="text-lg md:text-xl text-[#14120B] animate-spin" name="line-md:loading-loop"/>
+                                <Icon v-else class="text-lg md:text-xl text-[#14120B]" name="line-md:arrow-up"/>
+                        </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -248,6 +296,10 @@ const textareaInput = ref(null)
 const chatMode = ref('text') // 'text' или 'image'
 const attachedFiles = ref([])
 const fileInputRef = ref(null)
+const imagePrompt = ref('')
+const imageSize = ref('1:1') // Формат по умолчанию (квадрат)
+const isGeneratingImage = ref(false)
+const imagePromptInput = ref(null)
 
 /* первоначальная загрузка */
 onMounted(async () => {
@@ -261,7 +313,11 @@ onMounted(async () => {
     await nextTick()
     
     await loadDialogs()
-    await loadMessages()
+    // loadMessages вызывается внутри loadDialogs, если выбран первый диалог
+    // Иначе загружаем сообщения для текущего диалога
+    if (dialogs.value.length === 0 || currentDialogId.value) {
+        await loadMessages()
+    }
 })
 
 /* загрузка диалогов */
@@ -292,6 +348,15 @@ const loadDialogs = async () => {
         })
         
         dialogs.value = Array.from(dialogMap.values())
+        
+        // Автоматически открываем первый (самый верхний) диалог, если текущий не установлен
+        if (dialogs.value.length > 0 && (!currentDialogId.value || currentDialogId.value === 1)) {
+            const firstDialog = dialogs.value[0]
+            if (firstDialog && firstDialog.id !== currentDialogId.value) {
+                currentDialogId.value = firstDialog.id
+                await loadMessages()
+            }
+        }
     } catch (error) {
         console.error('Error loading dialogs:', error)
     }
@@ -314,7 +379,7 @@ const loadMessages = async () => {
         
         if (error) throw error
         
-        // Восстанавливаем файлы из JSONB если они есть
+        // Восстанавливаем файлы из JSONB и сгенерированные изображения если они есть
         // Supabase автоматически распарсит jsonb в объект/массив
         messages.value = (data || []).map(msg => {
             // Если files это строка (старый формат), пытаемся распарсить
@@ -325,6 +390,10 @@ const loadMessages = async () => {
                     console.error('Error parsing files:', e)
                     msg.files = null
                 }
+            }
+            // Если есть сгенерированное изображение, добавляем его
+            if (msg.generated_image) {
+                msg.generatedImage = msg.generated_image
             }
             // Если files уже объект/массив (jsonb), оставляем как есть
             return msg
@@ -976,6 +1045,198 @@ const downloadFile = async (file) => {
     } catch (error) {
         console.error('Error downloading file:', error)
         showMessage('Ошибка при скачивании файла', false)
+    }
+}
+
+/* генерация изображения */
+const generateImage = async () => {
+    if (!imagePrompt.value.trim() || isGeneratingImage.value) return
+    
+    const prompt = imagePrompt.value.trim()
+    imagePrompt.value = ''
+    
+    // Проверяем авторизацию
+    if (!id || !authenticated) {
+        showMessage('Ошибка: пользователь не авторизован. Пожалуйста, войдите снова.', false)
+        await navigateTo('/login')
+        return
+    }
+    
+    // Добавляем запрос пользователя в UI
+    messages.value.push({
+        id: Date.now(),
+        role: 'user',
+        content: `Сгенерировать изображение: ${prompt}`,
+        website_user_id: id,
+        dialog_id: currentDialogId.value,
+        created_at: new Date().toISOString()
+    })
+    
+    // Автопрокрутка для сообщения пользователя
+    nextTick(() => {
+        scrollToBottom()
+    })
+    
+    isGeneratingImage.value = true
+    
+    try {
+        const requestBody = {
+            prompt: prompt,
+            size: imageSize.value,
+            userId: String(id),
+            dialogId: currentDialogId.value || 1
+        }
+        
+        const response = await $fetch('/api/website/generate-image', {
+            method: 'POST',
+            body: requestBody
+        }).catch(err => {
+            console.error('API Error:', err)
+            throw new Error(err.data?.statusMessage || err.data?.message || err.message || 'Ошибка при генерации изображения')
+        })
+        
+        const { imageUrl, prompt: responsePrompt } = response
+        
+        if (!imageUrl) {
+            throw new Error('Изображение не было получено от API')
+        }
+        
+        // Добавляем ответ AI с изображением в UI
+        const aiMessage = {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: `Изображение сгенерировано: ${responsePrompt || prompt}`,
+            website_user_id: id,
+            dialog_id: currentDialogId.value,
+            generatedImage: imageUrl, // base64 data URL
+            created_at: new Date().toISOString()
+        }
+        
+        messages.value.push(aiMessage)
+        
+        // Автопрокрутка
+        nextTick(() => {
+            scrollToBottom()
+        })
+        
+        // Обновляем список диалогов если нужно
+        if (!dialogs.value.find(d => d.id === currentDialogId.value)) {
+            await loadDialogs()
+        }
+        
+        // Перезагружаем сообщения из БД, чтобы синхронизировать с сервером
+        await loadMessages()
+        
+    } catch (error) {
+        console.error('Error generating image:', error)
+        
+        let errorMessage = 'Ошибка при генерации изображения'
+        if (error.message) {
+            errorMessage = error.message
+        } else if (error.data?.statusMessage) {
+            errorMessage = error.data.statusMessage
+        }
+        
+        showMessage(errorMessage, false)
+        
+        // Удаляем сообщение пользователя из UI при ошибке
+        if (messages.value.length > 0 && messages.value[messages.value.length - 1].role === 'user') {
+            messages.value.pop()
+        }
+    } finally {
+        isGeneratingImage.value = false
+    }
+}
+
+/* получение имени файла для изображения */
+const getImageFilename = (content) => {
+    if (!content) return 'generated-image'
+    // Извлекаем промпт из "Изображение сгенерировано: {prompt}"
+    const match = content.match(/Изображение сгенерировано:\s*(.+)/)
+    if (match && match[1]) {
+        // Очищаем имя файла от недопустимых символов
+        const cleanName = match[1]
+            .replace(/[^a-zA-Zа-яА-Я0-9\s-]/g, '')
+            .substring(0, 50)
+            .trim()
+        return cleanName || 'generated-image'
+    }
+    return 'generated-image'
+}
+
+/* скачивание сгенерированного изображения */
+const downloadGeneratedImage = async (imageUrl, filename = 'generated-image') => {
+    try {
+        let blob, fileExtension
+        
+        // Если это base64 data URL, конвертируем его в blob
+        if (imageUrl.startsWith('data:image')) {
+            // Извлекаем MIME type и base64 данные
+            const matches = imageUrl.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
+            if (matches) {
+                const mimeType = matches[1]
+                const base64Data = matches[2]
+                fileExtension = mimeType === 'jpeg' ? 'jpg' : mimeType
+                
+                // Конвертируем base64 в blob
+                const byteCharacters = atob(base64Data)
+                const byteNumbers = new Array(byteCharacters.length)
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i)
+                }
+                const byteArray = new Uint8Array(byteNumbers)
+                blob = new Blob([byteArray], { type: `image/${mimeType}` })
+            } else {
+                throw new Error('Invalid data URL format')
+            }
+        } else {
+            // Если это обычный URL, загружаем через fetch
+            const response = await fetch(imageUrl)
+            if (!response.ok) {
+                throw new Error(`Ошибка загрузки изображения: ${response.statusText}`)
+            }
+            
+            blob = await response.blob()
+            
+            // Определяем расширение файла из Content-Type или URL
+            const contentType = response.headers.get('content-type') || ''
+            if (contentType.includes('jpeg')) {
+                fileExtension = 'jpg'
+            } else if (contentType.includes('png')) {
+                fileExtension = 'png'
+            } else if (contentType.includes('webp')) {
+                fileExtension = 'webp'
+            } else if (contentType.includes('gif')) {
+                fileExtension = 'gif'
+            } else {
+                // Пытаемся извлечь из URL
+                const urlMatch = imageUrl.match(/\.([a-zA-Z0-9]+)(?:\?|$)/)
+                fileExtension = urlMatch ? urlMatch[1] : 'png'
+            }
+        }
+        
+        // Создаем ссылку для скачивания
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${filename}.${fileExtension}`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        
+        showMessage('Изображение скачано', true)
+    } catch (error) {
+        console.error('Error downloading generated image:', error)
+        showMessage('Ошибка при скачивании изображения', false)
+    }
+}
+
+/* обработка ошибки загрузки изображения */
+const handleImageError = (event) => {
+    console.error('Error loading generated image:', event)
+    if (event.target) {
+        event.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ccc" width="400" height="300"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999"%3EОшибка загрузки изображения%3C/text%3E%3C/svg%3E'
     }
 }
 
