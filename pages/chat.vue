@@ -130,7 +130,24 @@
                                     <Icon class="text-base md:text-lg" name="material-symbols:content-copy-outline"/>
                                 </button>
                             </div>
-                            <div v-else class="whitespace-pre-wrap break-words">{{ msg.content }}</div>
+                            <div v-else class="whitespace-pre-wrap break-words">
+                                <div v-if="getMessageText(msg.content)">{{ getMessageText(msg.content) }}</div>
+                                <!-- Отображение прикрепленных файлов -->
+                                <div v-if="msg.files && msg.files.length > 0" class="mt-2 pt-2 border-t border-white/10">
+                                    <div class="flex flex-wrap gap-2">
+                                        <button
+                                            v-for="(file, index) in msg.files" 
+                                            :key="index"
+                                            @click="downloadFile(file)"
+                                            class="flex items-center gap-1.5 text-[10px] transition-colors cursor-pointer group">
+                                            <Icon class="text-xs text-blue-400 group-hover:text-blue-300" name="material-symbols:attach-file"/>
+                                            <span class="truncate max-w-[100px] md:max-w-[150px]">{{ file.name }}</span>
+                                            <span class="text-gray-400">({{ formatFileSize(file.size) }})</span>
+                                            <Icon class="text-xs text-gray-400 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" name="material-symbols:download"/>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                             <p class="text-[10px] md:text-xs mt-1.5 md:mt-2 opacity-60">{{ formatTime(msg.created_at) }}</p>
                         </div>
                     </div>
@@ -144,6 +161,33 @@
                 
                 <!-- Поле ввода -->
                 <div v-if="chatMode === 'text'" class="relative w-full flex-none group px-2 md:px-0 pb-2 md:pb-0">
+                    <!-- Список прикрепленных файлов -->
+                    <div v-if="attachedFiles.length > 0" class="flex flex-wrap gap-2 mb-2 px-1">
+                        <div 
+                            v-for="(file, index) in attachedFiles" 
+                            :key="index"
+                            class="flex items-center gap-2 bg-[#201e18] border border-white/20 rounded-lg px-2 py-1.5 text-xs">
+                            <Icon class="text-sm" name="material-symbols:attach-file"/>
+                            <span class="max-w-[150px] md:max-w-[200px] truncate">{{ file.name }}</span>
+                            <span class="text-gray-400 text-[10px]">({{ formatFileSize(file.size) }})</span>
+                            <button 
+                                @click="removeFile(index)"
+                                class="ml-1 hover:bg-white/10 rounded p-0.5 transition-colors flex cursor-pointer"
+                                title="Удалить файл">
+                                <Icon class="text-sm text-red-400" name="material-symbols:close"/>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Скрытый input для файлов -->
+                    <input 
+                        ref="fileInputRef"
+                        type="file"
+                        multiple
+                        @change="handleFileSelect"
+                        class="hidden"
+                        accept="*/*">
+                    
                     <textarea 
                         ref="textareaInput"
                         v-model="currentMessage"
@@ -152,16 +196,16 @@
                         placeholder="Попроси ИИ решить твою проблему..." 
                         class="text-xs md:text-sm p-3 md:p-4 pr-16 md:pr-20 rounded-xl border border-white/20 w-full bg-[#14120B] resize-none overflow-hidden focus:outline-none"
                         style="min-height: 44px; max-height: 150px;"></textarea>
-                    <div class="flex items-center gap-1.5 md:gap-2 absolute bottom-3 md:bottom-4 right-3 md:right-4">
+                    <div class="flex items-center gap-1.5 md:gap-2 absolute bottom-5 right-5 md:bottom-4 md:right-4">
                         <button 
                             @click="handleFileAttach"
                             class="cursor-pointer flex items-center justify-center"
                             title="Прикрепить файл">
-                            <Icon class="text-lg md:text-xl" name="ant-design:paper-clip-outlined"/>
+                            <Icon class="text-xl md:text-2xl" name="ant-design:paper-clip-outlined"/>
                         </button>
                         <button @click="sendMessage" 
-                            :disabled="isLoading || !currentMessage.trim()"
-                            :class="isLoading || !currentMessage.trim() ? 'opacity-50 cursor-not-allowed' : ''"
+                            :disabled="isLoading || (!currentMessage.trim() && attachedFiles.length === 0)"
+                            :class="isLoading || (!currentMessage.trim() && attachedFiles.length === 0) ? 'opacity-50 cursor-not-allowed' : ''"
                             class="cursor-pointer rounded-full p-1 flex items-center justify-center bg-white">
                             <Icon class="text-lg md:text-xl text-[#14120B]" name="line-md:arrow-up"/>
                         </button>
@@ -202,6 +246,8 @@ const dialogs = ref([])
 const messagesContainer = ref(null)
 const textareaInput = ref(null)
 const chatMode = ref('text') // 'text' или 'image'
+const attachedFiles = ref([])
+const fileInputRef = ref(null)
 
 /* первоначальная загрузка */
 onMounted(async () => {
@@ -268,7 +314,21 @@ const loadMessages = async () => {
         
         if (error) throw error
         
-        messages.value = data || []
+        // Восстанавливаем файлы из JSONB если они есть
+        // Supabase автоматически распарсит jsonb в объект/массив
+        messages.value = (data || []).map(msg => {
+            // Если files это строка (старый формат), пытаемся распарсить
+            if (msg.files && typeof msg.files === 'string') {
+                try {
+                    msg.files = JSON.parse(msg.files)
+                } catch (e) {
+                    console.error('Error parsing files:', e)
+                    msg.files = null
+                }
+            }
+            // Если files уже объект/массив (jsonb), оставляем как есть
+            return msg
+        })
         
         // Автопрокрутка вниз после загрузки
         nextTick(() => {
@@ -348,12 +408,26 @@ const deleteDialog = async (dialogId) => {
     }
 }
 
+/* конвертация файла в base64 */
+const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+    })
+}
+
 /* отправка сообщения */
 const sendMessage = async () => {
-    if (!currentMessage.value.trim() || isLoading.value) return
+    if ((!currentMessage.value.trim() && attachedFiles.value.length === 0) || isLoading.value) return
     
     const userMessage = currentMessage.value.trim()
+    const filesToSend = [...attachedFiles.value]
+    
+    // Очищаем поля
     currentMessage.value = ''
+    attachedFiles.value = []
     
     // Проверяем что userId существует перед отправкой
     if (!id || !authenticated) {
@@ -366,19 +440,53 @@ const sendMessage = async () => {
         return
     }
     
+    // Формируем контент сообщения с информацией о файлах
+    let messageContent = userMessage
+    if (filesToSend.length > 0) {
+        const fileInfo = filesToSend.map(f => `[Файл: ${f.name} (${formatFileSize(f.size)})]`).join('\n')
+        messageContent = messageContent ? `${messageContent}\n\n${fileInfo}` : fileInfo
+    }
+    
+    // Конвертируем файлы в base64 для сохранения
+    const filesDataForUI = filesToSend.length > 0 ? await Promise.all(
+        filesToSend.map(async (file) => {
+            const base64 = await fileToBase64(file)
+            return {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                data: base64
+            }
+        })
+    ) : null
+    
     // Добавляем сообщение пользователя в UI
     messages.value.push({
         id: Date.now(),
         role: 'user',
-        content: userMessage,
+        content: messageContent,
         website_user_id: id,
         dialog_id: currentDialogId.value,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        files: filesDataForUI
     })
     
     isLoading.value = true
     
     try {
+        // Конвертируем файлы в base64
+        const filesData = await Promise.all(
+            filesToSend.map(async (file) => {
+                const base64 = await fileToBase64(file)
+                return {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    data: base64
+                }
+            })
+        )
+        
         // Получаем историю для контекста (последние 3 пары сообщений, исключая только что добавленное сообщение пользователя)
         // messages.value уже содержит новое сообщение пользователя, но нам нужна история БЕЗ него
         const historyForContext = messages.value.slice(0, -1) // Исключаем последнее сообщение (которое мы только что добавили)
@@ -391,10 +499,11 @@ const sendMessage = async () => {
         
         // Подготавливаем данные для отправки
         const requestBody = {
-            message: userMessage,
+            message: userMessage || (filesToSend.length > 0 ? `Прикреплены файлы: ${filesToSend.map(f => f.name).join(', ')}` : ''),
             userId: String(id), // Преобразуем в строку на всякий случай
             dialogId: currentDialogId.value || 1,
-            conversationHistory: historyMessages
+            conversationHistory: historyMessages,
+            files: filesData.length > 0 ? filesData : undefined
         }
         
         console.log('Sending request:', { 
@@ -411,6 +520,14 @@ const sendMessage = async () => {
             throw new Error(err.data?.statusMessage || err.data?.message || err.message || 'Ошибка при обращении к API')
         })
         
+        // Обновляем сообщение пользователя с файлами из ответа сервера (если они были загружены)
+        // И добавляем ответ AI в UI
+        const lastUserMessageIndex = messages.value.length - 1
+        if (lastUserMessageIndex >= 0 && messages.value[lastUserMessageIndex].role === 'user') {
+            // Файлы теперь загружены в Storage, но мы уже добавили сообщение с base64
+            // При следующей загрузке файлы будут со ссылками на Storage
+        }
+        
         // Добавляем ответ AI в UI
         messages.value.push({
             id: Date.now() + 1,
@@ -424,6 +541,10 @@ const sendMessage = async () => {
         // Автоматически изменяем размер textarea после отправки
         nextTick(() => {
             autoResizeTextarea()
+            // Очищаем input файлов
+            if (fileInputRef.value) {
+                fileInputRef.value.value = ''
+            }
         })
         
         // Автопрокрутка вниз
@@ -680,8 +801,110 @@ const formatTime = (timestamp) => {
 
 /* прикрепление файла */
 const handleFileAttach = () => {
-    // TODO: Реализовать загрузку файлов
-    showMessage('Функция загрузки файлов в разработке', false)
+    if (fileInputRef.value) {
+        fileInputRef.value.click()
+    }
+}
+
+/* обработка выбора файлов */
+const handleFileSelect = (event) => {
+    const files = Array.from(event.target.files || [])
+    
+    if (files.length === 0) return
+    
+    // Проверяем размер каждого файла (макс 10MB)
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    const invalidFiles = files.filter(file => file.size > maxSize)
+    
+    if (invalidFiles.length > 0) {
+        showMessage(`Файлы больше 10MB не поддерживаются. Большие файлы: ${invalidFiles.map(f => f.name).join(', ')}`, false)
+        files.splice(files.indexOf(invalidFiles[0]), invalidFiles.length)
+    }
+    
+    // Добавляем валидные файлы
+    attachedFiles.value.push(...files.filter(file => file.size <= maxSize))
+    
+    // Очищаем input для возможности повторного выбора тех же файлов
+    if (fileInputRef.value) {
+        fileInputRef.value.value = ''
+    }
+}
+
+/* удаление файла */
+const removeFile = (index) => {
+    attachedFiles.value.splice(index, 1)
+}
+
+/* форматирование размера файла */
+const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+/* получение текста сообщения без информации о файлах */
+const getMessageText = (content) => {
+    if (!content) return ''
+    // Убираем строки с [Файл: ...] из текста
+    return content.replace(/\[Файл:[^\]]+\]/g, '').trim()
+}
+
+/* скачивание файла */
+const downloadFile = async (file) => {
+    if (!file) {
+        showMessage('Ошибка: файл недоступен для скачивания', false)
+        return
+    }
+    
+    try {
+        // Если есть URL из Storage, используем его
+        if (file.url) {
+            // Скачиваем файл по URL
+            const response = await fetch(file.url)
+            if (!response.ok) {
+                throw new Error('Failed to fetch file')
+            }
+            const blob = await response.blob()
+            
+            // Создаем ссылку для скачивания
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = file.name || 'download'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+        } 
+        // Если есть base64 данные (старые файлы), используем их
+        else if (file.data) {
+            const base64Data = file.data.split(',')[1] || file.data
+            const byteCharacters = atob(base64Data)
+            const byteNumbers = new Array(byteCharacters.length)
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i)
+            }
+            const byteArray = new Uint8Array(byteNumbers)
+            const blob = new Blob([byteArray], { type: file.type || 'application/octet-stream' })
+            
+            // Создаем ссылку для скачивания
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = file.name || 'download'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+        } else {
+            throw new Error('No file data or URL available')
+        }
+    } catch (error) {
+        console.error('Error downloading file:', error)
+        showMessage('Ошибка при скачивании файла', false)
+    }
 }
 
 /* автоматическое изменение размера textarea */

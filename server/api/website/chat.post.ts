@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
     try {
         const body = await readBody(event)
         
-        const { message, userId, dialogId, conversationHistory } = body
+        const { message, userId, dialogId, conversationHistory, files } = body
         
         // Отладочная информация
         console.log('Received body:', { 
@@ -84,15 +84,77 @@ export default defineEventHandler(async (event) => {
         
         const supabase = createClient(supabaseUrl, supabaseKey)
         
-        // Сохраняем сообщение пользователя
+        // Загружаем файлы в Supabase Storage если они есть
+        let filesData = null
+        if (files && Array.isArray(files) && files.length > 0) {
+            // Создаем клиент с service role для загрузки файлов
+            const supabaseStorage = createClient(supabaseUrl, supabaseKey)
+            
+            const uploadedFiles = await Promise.all(
+                files.map(async (file: any) => {
+                    try {
+                        // Конвертируем base64 в Buffer (для Node.js)
+                        const base64Data = file.data.split(',')[1] || file.data
+                        const buffer = Buffer.from(base64Data, 'base64')
+                        // В Node.js используем Buffer напрямую, Supabase принимает Buffer
+                        
+                        // Генерируем уникальное имя файла
+                        const fileExtension = file.name.split('.').pop() || 'bin'
+                        const uniqueFileName = `${userId}/${dialogId || 1}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`
+                        
+                        // Загружаем файл в Storage (используем Buffer напрямую)
+                        const { data: uploadData, error: uploadError } = await supabaseStorage.storage
+                            .from('chat-files')
+                            .upload(uniqueFileName, buffer, {
+                                contentType: file.type || 'application/octet-stream',
+                                upsert: false
+                            })
+                        
+                        if (uploadError) {
+                            console.error('Error uploading file:', uploadError)
+                            return null
+                        }
+                        
+                        // Получаем публичную ссылку
+                        const { data: urlData } = supabaseStorage.storage
+                            .from('chat-files')
+                            .getPublicUrl(uniqueFileName)
+                        
+                        return {
+                            name: file.name,
+                            type: file.type,
+                            size: file.size,
+                            url: urlData.publicUrl,
+                            path: uniqueFileName
+                        }
+                    } catch (error) {
+                        console.error('Error processing file:', error)
+                        return null
+                    }
+                })
+            )
+            
+            // Фильтруем null значения (неудачные загрузки)
+            filesData = uploadedFiles.filter(f => f !== null)
+        }
+        
+        // Сохраняем сообщение пользователя (с файлами если есть)
+        const userMessageData: any = {
+            website_user_id: userId,
+            role: 'user',
+            content: message,
+            dialog_id: dialogId || 1
+        }
+        
+        // Добавляем файлы как JSONB если они есть (теперь со ссылками на Storage)
+        // Для jsonb передаем массив напрямую, Supabase автоматически сериализует
+        if (filesData && filesData.length > 0) {
+            userMessageData.files = filesData
+        }
+        
         const { error: userMessageError } = await supabase
             .from('website_conversations')
-            .insert({
-                website_user_id: userId,
-                role: 'user',
-                content: message,
-                dialog_id: dialogId || 1
-            })
+            .insert(userMessageData)
         
         if (userMessageError) {
             console.error('Error saving user message:', userMessageError)
