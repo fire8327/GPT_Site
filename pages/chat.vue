@@ -151,7 +151,7 @@
                             <p class="text-[10px] md:text-xs mt-1.5 md:mt-2 opacity-60">{{ formatTime(msg.created_at) }}</p>
                         </div>
                     </div>
-                    <div v-if="isLoading" class="flex justify-start px-1">
+                    <div v-if="isLoading[currentDialogId]" class="flex justify-start px-1">
                         <div class="bg-[#201e18] border border-white/20 rounded-xl p-3 md:p-4 text-xs md:text-sm flex items-center gap-2">
                             <Icon class="text-lg md:text-xl animate-spin" name="line-md:loading-loop"/>
                             <span>Думаю...</span>
@@ -204,8 +204,8 @@
                             <Icon class="text-xl md:text-2xl" name="ant-design:paper-clip-outlined"/>
                         </button>
                         <button @click="sendMessage" 
-                            :disabled="isLoading || (!currentMessage.trim() && attachedFiles.length === 0)"
-                            :class="isLoading || (!currentMessage.trim() && attachedFiles.length === 0) ? 'opacity-50 cursor-not-allowed' : ''"
+                            :disabled="isLoading[currentDialogId] || (!currentMessage.trim() && attachedFiles.length === 0)"
+                            :class="isLoading[currentDialogId] || (!currentMessage.trim() && attachedFiles.length === 0) ? 'opacity-50 cursor-not-allowed' : ''"
                             class="cursor-pointer rounded-full p-1 flex items-center justify-center bg-white">
                             <Icon class="text-lg md:text-xl text-[#14120B]" name="line-md:arrow-up"/>
                         </button>
@@ -240,7 +240,7 @@ const supabase = useSupabaseClient()
 /* состояния */
 const messages = ref([])
 const currentMessage = ref('')
-const isLoading = ref(false)
+const isLoading = ref({}) // Объект для отслеживания загрузки по dialogId
 const currentDialogId = ref(1)
 const dialogs = ref([])
 const messagesContainer = ref(null)
@@ -377,6 +377,10 @@ const createNewDialog = async () => {
 
 /* переключение диалога */
 const switchDialog = async (dialogId) => {
+    // Останавливаем загрузку для старого диалога если она была
+    if (isLoading.value[currentDialogId.value]) {
+        isLoading.value[currentDialogId.value] = false
+    }
     currentDialogId.value = dialogId
     await loadMessages()
 }
@@ -420,7 +424,7 @@ const fileToBase64 = (file) => {
 
 /* отправка сообщения */
 const sendMessage = async () => {
-    if ((!currentMessage.value.trim() && attachedFiles.value.length === 0) || isLoading.value) return
+    if ((!currentMessage.value.trim() && attachedFiles.value.length === 0) || isLoading.value[currentDialogId.value]) return
     
     const userMessage = currentMessage.value.trim()
     const filesToSend = [...attachedFiles.value]
@@ -440,11 +444,24 @@ const sendMessage = async () => {
         return
     }
     
-    // Формируем контент сообщения с информацией о файлах
+    // Формируем контент сообщения (без информации о файлах, так как они будут проанализированы ИИ)
     let messageContent = userMessage
-    if (filesToSend.length > 0) {
-        const fileInfo = filesToSend.map(f => `[Файл: ${f.name} (${formatFileSize(f.size)})]`).join('\n')
-        messageContent = messageContent ? `${messageContent}\n\n${fileInfo}` : fileInfo
+    // Если есть файлы но нет текста, добавляем минимальное описание
+    if (filesToSend.length > 0 && !userMessage) {
+        const hasTextFiles = filesToSend.some(f => 
+            f.type.startsWith('text/') || 
+            f.type === 'application/json' ||
+            f.name.match(/\.(txt|md|js|ts|jsx|tsx|vue|py|java|cpp|c|h|css|html|xml|json|yaml|yml|sh|bash|sql|log)$/i)
+        )
+        const hasImages = filesToSend.some(f => f.type.startsWith('image/'))
+        
+        if (hasTextFiles) {
+            messageContent = 'Проанализируй прикрепленные файлы'
+        } else if (hasImages) {
+            messageContent = 'Проанализируй прикрепленные изображения'
+        } else {
+            messageContent = 'Файлы прикреплены'
+        }
     }
     
     // Конвертируем файлы в base64 для сохранения
@@ -471,19 +488,74 @@ const sendMessage = async () => {
         files: filesDataForUI
     })
     
-    isLoading.value = true
+    isLoading.value[currentDialogId.value] = true
     
     try {
-        // Конвертируем файлы в base64
+        // Обрабатываем файлы: читаем содержимое текстовых файлов и конвертируем изображения
         const filesData = await Promise.all(
             filesToSend.map(async (file) => {
                 const base64 = await fileToBase64(file)
-                return {
+                const fileInfo = {
                     name: file.name,
                     type: file.type,
                     size: file.size,
                     data: base64
                 }
+                
+                // Определяем тип файла и читаем содержимое если это текст/код (исключая SVG, обрабатывается отдельно)
+                if ((file.type.startsWith('text/') || 
+                    file.type === 'application/json' ||
+                    file.name.match(/\.(txt|md|js|ts|jsx|tsx|vue|py|java|cpp|c|h|css|html|xml|json|yaml|yml|sh|bash|sql|log)$/i)) &&
+                    !file.name.match(/\.svg$/i)) {
+                    try {
+                        // Читаем содержимое текстового файла
+                        const text = await file.text()
+                        fileInfo.content = text
+                        fileInfo.isText = true
+                        fileInfo.isSupported = true
+                    } catch (e) {
+                        console.error('Error reading text file:', e)
+                        fileInfo.isSupported = false
+                        fileInfo.unsupportedReason = 'Не удалось прочитать содержимое файла'
+                    }
+                }
+                // Определяем изображения (исключая SVG, так как он может обрабатываться отдельно)
+                else if (file.type.startsWith('image/') && !file.name.match(/\.svg$/i)) {
+                    // Проверяем размер изображения (макс 20MB для base64)
+                    if (file.size > 20 * 1024 * 1024) {
+                        fileInfo.isSupported = false
+                        fileInfo.unsupportedReason = `Изображение слишком большое (${formatFileSize(file.size)}). Максимальный размер: 20MB`
+                    } else {
+                        fileInfo.isImage = true
+                        fileInfo.isSupported = true
+                    }
+                }
+                // SVG обрабатываем отдельно - это текстовый формат
+                else if (file.name.match(/\.svg$/i) || file.type === 'image/svg+xml') {
+                    try {
+                        // SVG можно прочитать как текст
+                        const text = await file.text()
+                        fileInfo.content = text
+                        fileInfo.isText = true
+                        fileInfo.isSupported = true
+                        // Также сохраняем base64 для отображения в UI
+                    } catch (e) {
+                        console.error('Error reading SVG file:', e)
+                        fileInfo.isSupported = false
+                        fileInfo.unsupportedReason = 'Не удалось прочитать SVG файл'
+                    }
+                }
+                // Определяем неподдерживаемые форматы
+                else if (file.name.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i)) {
+                    fileInfo.isSupported = false
+                    fileInfo.unsupportedReason = `Формат файла ${file.name.split('.').pop().toUpperCase()} не поддерживается для анализа ИИ. Попробуйте конвертировать файл в текстовый формат (TXT, MD) или изображение.`
+                }
+                else {
+                    fileInfo.isSupported = false
+                    fileInfo.unsupportedReason = `Формат файла не поддерживается для анализа ИИ. Поддерживаются: текстовые файлы (TXT, MD, код), изображения (JPG, PNG, GIF, WEBP) и JSON.`
+                }
+                
+                return fileInfo
             })
         )
         
@@ -581,7 +653,7 @@ const sendMessage = async () => {
             messages.value.pop()
         }
     } finally {
-        isLoading.value = false
+        isLoading.value[currentDialogId.value] = false
     }
 }
 
