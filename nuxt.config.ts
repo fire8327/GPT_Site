@@ -16,6 +16,4 @@ export default defineNuxtConfig({
   runtimeConfig: {
     openRouterApiKey: process.env.OPEN_ROUTER_API_KEY,
   },
-  
-  ssr: false,
 })
