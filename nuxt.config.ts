@@ -19,4 +19,13 @@ export default defineNuxtConfig({
     },
     openRouterApiKey: process.env.OPEN_ROUTER_API_KEY, // Загружаем переменную из окружения
   },
+  postcss: {
+    plugins: {
+      cssnano: false 
+    }
+  },
+  ssr: false,
+  nitro: {
+    preset: 'netlify'
+  }
 })
