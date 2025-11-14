@@ -14,9 +14,6 @@ export default defineNuxtConfig({
   },
   css: ['@/assets/css/tailwind.css'],
   runtimeConfig: {
-    public: {
-      // Пример: apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3000/api'
-    },
-    openRouterApiKey: process.env.OPEN_ROUTER_API_KEY, // Загружаем переменную из окружения
+    openRouterApiKey: process.env.OPEN_ROUTER_API_KEY,
   },
 })
