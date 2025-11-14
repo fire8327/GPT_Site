@@ -16,7 +16,7 @@
 
         <!-- сообщения -->
         <button type="button" @click="messageTitle = null"
-            class="lg:fixed lg:top-10 lg:right-4 max-lg:sticky max-lg:top-4 max-lg:mx-auto z-[11] cursor-pointer flex items-center gap-2 px-4 py-1 text-base rounded-xl w-fit font-medium font-mono border-white border bg-[#2C2C2C] shadow-[0px_0px_13px_-7px_black]"
+            class="fixed lg:top-10 lg:right-4 top-4 z-[11] cursor-pointer flex items-center gap-2 px-4 py-1 text-base rounded-xl w-fit font-medium font-mono border-white border bg-[#2C2C2C] shadow-[0px_0px_13px_-7px_black]"
             :class="messageType ? 'text-white' : 'text-red-500'" v-if="messageTitle">
             <Icon class="text-2xl" name="material-symbols:close-small-rounded" />
             <span>{{ messageTitle }}</span>
