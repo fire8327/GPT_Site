@@ -7,7 +7,8 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@nuxt/icon',
     '@formkit/nuxt',
-    '@nuxtjs/supabase'
+    '@nuxtjs/supabase',
+    '@hypernym/nuxt-anime'
   ],
   supabase: {
     redirect: false

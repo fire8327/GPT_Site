@@ -1,5 +1,9 @@
 <template>
-    <div class="flex max-lg:flex-col gap-8 grow">
+    <div class="relative min-h-screen overflow-hidden">
+        <!-- Анимированный фон -->
+        <div ref="particles" class="absolute inset-0 z-0 pointer-events-none"></div>
+
+        <div class="relative z-10 flex max-lg:flex-col gap-8 grow">
         <div class="w-full lg:w-[30%] flex flex-col gap-2">
             <div class="flex items-center gap-4">
                 <p class="font-medium text-xl">{{ user?.login ? `${user?.login}` : 'загрузка...' }}</p>
@@ -162,6 +166,7 @@
             </FormKit>
         </ProfileModal>        
     </div>
+    </div>
   </template>
   
 <script setup>
@@ -190,6 +195,7 @@ const supabase = useSupabaseClient()
 /* первоначальная загрузка данных */
 onMounted(async () => {
     loadUserData()
+    createParticles()
 })
 
 /* загрузка данных пользователя */
@@ -259,6 +265,40 @@ const updLogin = async(form) => {
     }
 }
 
+/* создание частиц */
+const particles = ref(null)
+const createParticles = () => {
+    if (!particles.value) return
+
+    const particleCount = 50
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div')
+        particle.className = 'absolute rounded-full bg-gradient-to-r from-blue-400/20 to-purple-500/20'
+
+        const size = Math.random() * 4 + 1
+        const posX = Math.random() * 100
+        const posY = Math.random() * 100
+
+        particle.style.width = `${size}px`
+        particle.style.height = `${size}px`
+        particle.style.left = `${posX}%`
+        particle.style.top = `${posY}%`
+
+        particles.value.appendChild(particle)
+
+        const { $anime } = useNuxtApp()
+        $anime({
+            targets: particle,
+            translateX: () => $anime.random(-100, 100),
+            translateY: () => $anime.random(-100, 100),
+            duration: () => $anime.random(15000, 30000),
+            easing: 'easeInOutSine',
+            loop: true,
+            direction: 'alternate'
+        })
+    }
+}
+
 const updPass = async(form) => {
     const { data, error } = await supabase
     .from('website_users')
@@ -297,3 +337,9 @@ const copyToClipboard = async (text) => {
   }
 }
 </script>
+
+<style scoped>
+.absolute {
+    will-change: transform;
+}
+</style>

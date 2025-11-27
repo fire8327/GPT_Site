@@ -1,5 +1,9 @@
 <template>
-    <div class="h-screen flex flex-col overflow-hidden">
+    <div class="relative h-screen overflow-hidden">
+        <!-- Анимированный фон -->
+        <div ref="particles" class="absolute inset-0 z-0 pointer-events-none"></div>
+
+        <div class="relative z-10 h-full flex flex-col overflow-hidden">
         <!-- Хедер с кнопками режимов -->
         <div class="flex items-center justify-between border-b border-white/20 pb-3 md:pb-4 px-2 md:px-0 flex-shrink-0">
             <!-- Мобильная кнопка меню -->
@@ -266,6 +270,7 @@
                 </div>
             </div>
         </div>
+        </div>
     </div>
 </template>
 
@@ -300,6 +305,40 @@ const imagePrompt = ref('')
 const imageSize = ref('1:1') // Формат по умолчанию (квадрат)
 const isGeneratingImage = ref(false)
 const imagePromptInput = ref(null)
+const particles = ref(null)
+
+/* создание частиц */
+const createParticles = () => {
+    if (!particles.value) return
+
+    const particleCount = 50
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div')
+        particle.className = 'absolute rounded-full bg-gradient-to-r from-blue-400/20 to-purple-500/20'
+
+        const size = Math.random() * 4 + 1
+        const posX = Math.random() * 100
+        const posY = Math.random() * 100
+
+        particle.style.width = `${size}px`
+        particle.style.height = `${size}px`
+        particle.style.left = `${posX}%`
+        particle.style.top = `${posY}%`
+
+        particles.value.appendChild(particle)
+
+        const { $anime } = useNuxtApp()
+        $anime({
+            targets: particle,
+            translateX: () => $anime.random(-100, 100),
+            translateY: () => $anime.random(-100, 100),
+            duration: () => $anime.random(15000, 30000),
+            easing: 'easeInOutSine',
+            loop: true,
+            direction: 'alternate'
+        })
+    }
+}
 
 /* первоначальная загрузка */
 onMounted(async () => {
@@ -318,6 +357,8 @@ onMounted(async () => {
     if (dialogs.value.length === 0 || currentDialogId.value) {
         await loadMessages()
     }
+
+    createParticles()
 })
 
 /* загрузка диалогов */
@@ -1249,3 +1290,9 @@ const autoResizeTextarea = () => {
     }
 }
 </script>
+
+<style scoped>
+.absolute {
+    will-change: transform;
+}
+</style>

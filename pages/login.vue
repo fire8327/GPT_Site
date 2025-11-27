@@ -1,6 +1,9 @@
 <template>
-    <div class="flex items-center justify-center">
-      <div class="max-w-md w-full space-y-8">
+    <div class="relative min-h-screen overflow-hidden flex items-center justify-center px-4">
+      <!-- Анимированный фон -->
+      <div ref="particles" class="absolute inset-0 z-0 pointer-events-none"></div>
+
+      <div class="relative z-10 max-w-md w-full space-y-8">
         <div class="text-center">
           <h1 class="text-4xl md:text-5xl font-mono font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
             Вход
@@ -87,6 +90,7 @@ const router = useRouter()
 
 /* вход */
 const isAuthDisabled = ref(false)
+const particles = ref(null)
 const authUser = async(formData) => {      
     isAuthDisabled.value = true
     const { data: user, error } = await supabase
@@ -115,4 +119,47 @@ const authUser = async(formData) => {
     await nextTick()
     router.push('/chat')
 } 
+
+/* создание частиц */
+const createParticles = () => {
+    if (!particles.value) return
+
+    const particleCount = 50
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div')
+        particle.className = 'absolute rounded-full bg-gradient-to-r from-blue-400/20 to-purple-500/20'
+
+        const size = Math.random() * 4 + 1
+        const posX = Math.random() * 100
+        const posY = Math.random() * 100
+
+        particle.style.width = `${size}px`
+        particle.style.height = `${size}px`
+        particle.style.left = `${posX}%`
+        particle.style.top = `${posY}%`
+
+        particles.value.appendChild(particle)
+
+        const { $anime } = useNuxtApp()
+        $anime({
+            targets: particle,
+            translateX: () => $anime.random(-100, 100),
+            translateY: () => $anime.random(-100, 100),
+            duration: () => $anime.random(15000, 30000),
+            easing: 'easeInOutSine',
+            loop: true,
+            direction: 'alternate'
+        })
+    }
+}
+
+onMounted(() => {
+    createParticles()
+})
   </script>
+
+  <style scoped>
+  .absolute {
+      will-change: transform;
+  }
+  </style>
