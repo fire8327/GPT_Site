@@ -57,24 +57,64 @@ export default defineEventHandler(async (event) => {
             : `${prompt}\n\nРазрешение: ${validSize}, Соотношение сторон: ${aspectRatio}`
         
         // Формируем контент сообщения
-        const messageContent: any[] = [
-            {
-                type: 'text',
-                text: hasInputImage 
-                    ? `Измени это изображение согласно описанию: ${enhancedPrompt}`
-                    : `Сгенерируй изображение: ${enhancedPrompt}`
-            }
-        ]
+        let messageContent: any[] = []
         
-        // Если есть загруженное изображение, добавляем его в контент
         if (hasInputImage) {
-            messageContent.push({
-                type: 'image_url',
-                image_url: {
-                    url: inputImage
+            // Для модификации изображений: сначала изображение, потом текст
+            // Проверяем размер base64 строки (не должна быть слишком большой)
+            const base64Length = inputImage.length
+            if (base64Length > 20000000) { // ~20MB в base64
+                throw createError({
+                    statusCode: 400,
+                    statusMessage: 'Изображение слишком большое. Максимальный размер: ~15MB'
+                })
+            }
+            
+            messageContent = [
+                {
+                    type: 'image_url',
+                    image_url: {
+                        url: inputImage
+                    }
+                },
+                {
+                    type: 'text',
+                    text: `Измени это изображение согласно описанию: ${prompt}. Сохрани общий стиль и качество изображения.`
                 }
-            })
+            ]
+        } else {
+            // Для генерации нового изображения
+            messageContent = [
+                {
+                    type: 'text',
+                    text: `Сгенерируй изображение: ${enhancedPrompt}`
+                }
+            ]
         }
+        
+        // Формируем тело запроса
+        const requestBody: any = {
+            model: 'google/gemini-2.5-flash-image',
+            messages: [
+                {
+                    role: 'user',
+                    content: messageContent
+                }
+            ]
+        }
+        
+        // Для модификации изображений может потребоваться дополнительный параметр
+        if (hasInputImage) {
+            // Некоторые модели требуют явного указания, что это модификация
+            requestBody.temperature = 0.7
+        }
+        
+        console.log('Sending request to OpenRouter:', {
+            model: requestBody.model,
+            hasInputImage: hasInputImage,
+            contentTypes: messageContent.map((c: any) => c.type),
+            contentLength: JSON.stringify(messageContent).length
+        })
         
         const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
@@ -84,15 +124,7 @@ export default defineEventHandler(async (event) => {
                 'HTTP-Referer': 'https://your-site.com',
                 'X-Title': 'GPT Site Image Generation'
             },
-            body: JSON.stringify({
-                model: 'google/gemini-2.5-flash-image',
-                messages: [
-                    {
-                        role: 'user',
-                        content: messageContent
-                    }
-                ]
-            })
+            body: JSON.stringify(requestBody)
         })
         
         if (!openRouterResponse.ok) {
@@ -100,7 +132,9 @@ export default defineEventHandler(async (event) => {
             console.error('OpenRouter API error:', {
                 status: openRouterResponse.status,
                 statusText: openRouterResponse.statusText,
-                error: errorText
+                error: errorText,
+                hasInputImage: hasInputImage,
+                requestBody: JSON.stringify(requestBody, null, 2)
             })
             
             let errorMessage = `OpenRouter API error (${openRouterResponse.status})`
@@ -111,7 +145,16 @@ export default defineEventHandler(async (event) => {
                 
                 // Специальная обработка ошибок
                 if (errorMessage.includes('provider returned error') || errorMessage.includes('model not found')) {
-                    errorMessage = `Модель openai/gpt-5-image-mini недоступна или не поддерживает генерацию изображений. Проверьте документацию OpenRouter для правильного названия модели или используйте другую модель для генерации изображений (например, dall-e-3 через OpenAI API).`
+                    if (hasInputImage) {
+                        errorMessage = `Модель не поддерживает модификацию изображений или формат запроса неверный. Попробуйте использовать другую модель или сгенерировать новое изображение.`
+                    } else {
+                        errorMessage = `Модель недоступна или не поддерживает генерацию изображений. Проверьте документацию OpenRouter для правильного названия модели.`
+                    }
+                }
+                
+                // Обработка ошибок связанных с размером изображения
+                if (errorMessage.includes('size') || errorMessage.includes('too large') || errorMessage.includes('limit')) {
+                    errorMessage = `Изображение слишком большое или превышает лимиты API. Попробуйте использовать изображение меньшего размера.`
                 }
             } catch (e) {
                 errorMessage = errorText || errorMessage
@@ -127,28 +170,87 @@ export default defineEventHandler(async (event) => {
         console.log('OpenRouter response (RAW):', JSON.stringify(openRouterData, null, 2))
         
         // Извлекаем изображение из ответа
-        // Структура: choices[0].message.images[0].image_url.url
+        // Структура может быть разной в зависимости от модели и типа запроса
         let imageUrl = null
         
         try {
             const choice = openRouterData.choices?.[0]
             const message = choice?.message
-            const images = message?.images
             
+            // Вариант 1: Структура с images массивом (для генерации изображений)
+            const images = message?.images
             if (images && images.length > 0 && images[0]?.image_url?.url) {
                 imageUrl = images[0].image_url.url
-                console.log('Extracted image URL (base64 data URL)')
-            } else {
-                console.warn('No image found in response structure')
+                console.log('Extracted image URL from images array (base64 data URL)')
+            }
+            // Вариант 2: Изображение в content (для модификации изображений)
+            else if (message?.content) {
+                // Проверяем, является ли content массивом
+                if (Array.isArray(message.content)) {
+                    for (const item of message.content) {
+                        if (item.type === 'image_url' && item.image_url?.url) {
+                            imageUrl = item.image_url.url
+                            console.log('Extracted image URL from content array')
+                            break
+                        }
+                    }
+                }
+                // Если content - строка, пытаемся найти base64 data URL
+                else if (typeof message.content === 'string') {
+                    const base64Match = message.content.match(/data:image\/[^;]+;base64,[^\s"']+/)
+                    if (base64Match) {
+                        imageUrl = base64Match[0]
+                        console.log('Extracted image URL from content string')
+                    }
+                }
+            }
+            // Вариант 3: Проверяем весь объект message на наличие изображений
+            else {
+                // Рекурсивно ищем image_url в объекте
+                const findImageUrl = (obj: any): string | null => {
+                    if (!obj || typeof obj !== 'object') return null
+                    if (obj.image_url?.url) return obj.image_url.url
+                    if (obj.url && typeof obj.url === 'string' && obj.url.startsWith('data:image/')) {
+                        return obj.url
+                    }
+                    for (const key in obj) {
+                        if (obj.hasOwnProperty(key)) {
+                            const result = findImageUrl(obj[key])
+                            if (result) return result
+                        }
+                    }
+                    return null
+                }
+                
+                const foundUrl = findImageUrl(message)
+                if (foundUrl) {
+                    imageUrl = foundUrl
+                    console.log('Extracted image URL by recursive search')
+                }
+            }
+            
+            if (!imageUrl) {
+                console.warn('No image found in response structure. Full message:', JSON.stringify(message, null, 2))
+                console.warn('Available keys in message:', message ? Object.keys(message) : 'message is null')
             }
         } catch (error) {
             console.error('Error extracting image from response:', error)
+            console.error('Response structure:', JSON.stringify(openRouterData, null, 2))
         }
         
         if (!imageUrl) {
+            // Пытаемся получить более детальную информацию об ошибке
+            const errorDetails = {
+                hasChoices: !!openRouterData.choices,
+                choicesLength: openRouterData.choices?.length || 0,
+                messageContent: openRouterData.choices?.[0]?.message?.content || 'N/A',
+                messageKeys: openRouterData.choices?.[0]?.message ? Object.keys(openRouterData.choices[0].message) : []
+            }
+            console.error('Failed to extract image. Details:', errorDetails)
+            
             throw createError({
                 statusCode: 500,
-                statusMessage: 'Изображение не было сгенерировано или не удалось его извлечь из ответа'
+                statusMessage: `Изображение не было сгенерировано или не удалось его извлечь из ответа. Ответ API: ${JSON.stringify(errorDetails)}`
             })
         }
         
