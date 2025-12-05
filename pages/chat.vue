@@ -248,13 +248,46 @@
                             </button>
                         </div>
                         
+                        <!-- Загруженное изображение для модификации -->
+                        <div v-if="uploadedImageForModification" class="relative">
+                            <div class="relative inline-block">
+                                <img 
+                                    :src="uploadedImageForModification.preview" 
+                                    alt="Загруженное изображение"
+                                    class="max-w-full max-h-48 rounded-lg border border-white/20">
+                                <button
+                                    @click="removeUploadedImage"
+                                    class="absolute top-2 right-2 bg-red-500 hover:bg-red-600 rounded-full p-1.5 cursor-pointer transition-colors flex items-center justify-center"
+                                    title="Удалить изображение">
+                                    <Icon class="text-sm text-white" name="material-symbols:close"/>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Изображение загружено. Опишите, что нужно изменить.</p>
+                        </div>
+                        
+                        <!-- Кнопка загрузки изображения -->
+                        <div class="flex items-center gap-2">
+                            <input 
+                                ref="imageInputRef"
+                                type="file"
+                                accept="image/*"
+                                @change="handleImageUpload"
+                                class="hidden">
+                            <button
+                                @click="handleImageUploadClick"
+                                class="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/20 bg-[#201e18] hover:bg-[#2a2720] transition-colors cursor-pointer text-xs md:text-sm">
+                                <Icon class="text-lg" name="material-symbols:image-outline"/>
+                                <span>{{ uploadedImageForModification ? 'Изменить изображение' : 'Загрузить изображение для модификации' }}</span>
+                            </button>
+                        </div>
+                        
                         <!-- Поле ввода промпта -->
                         <div class="relative">
                             <textarea 
                                 ref="imagePromptInput"
                                 v-model="imagePrompt"
                                 @keydown.enter="generateImage"
-                                placeholder="Опишите изображение, которое хотите сгенерировать..." 
+                                :placeholder="uploadedImageForModification ? 'Опишите, что нужно изменить в изображении (например: добавь новогоднюю шапочку)' : 'Опишите изображение, которое хотите сгенерировать...'" 
                                 class="text-xs md:text-sm p-3 md:p-4 pr-16 md:pr-20 rounded-xl border border-white/20 w-full bg-[#14120B] resize-none overflow-hidden focus:outline-none"
                                 style="min-height: 80px; max-height: 150px;"></textarea>
                             <button 
@@ -306,6 +339,8 @@ const imageSize = ref('1:1') // Формат по умолчанию (квадр
 const isGeneratingImage = ref(false)
 const imagePromptInput = ref(null)
 const particles = ref(null)
+const uploadedImageForModification = ref(null) // Загруженное изображение для модификации
+const imageInputRef = ref(null) // Референс для input файла изображения
 
 /* создание частиц */
 const createParticles = () => {
@@ -1089,12 +1124,64 @@ const downloadFile = async (file) => {
     }
 }
 
+/* обработка загрузки изображения для модификации */
+const handleImageUploadClick = () => {
+    if (imageInputRef.value) {
+        imageInputRef.value.click()
+    }
+}
+
+const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    
+    // Проверяем, что это изображение
+    if (!file.type.startsWith('image/')) {
+        showMessage('Пожалуйста, выберите файл изображения', false)
+        return
+    }
+    
+    // Проверяем размер (макс 10MB)
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+        showMessage('Изображение слишком большое. Максимальный размер: 10MB', false)
+        return
+    }
+    
+    // Создаем preview
+    const reader = new FileReader()
+    reader.onload = (e) => {
+        uploadedImageForModification.value = {
+            file: file,
+            preview: e.target.result,
+            name: file.name,
+            type: file.type,
+            size: file.size
+        }
+    }
+    reader.readAsDataURL(file)
+    
+    // Очищаем input для возможности повторного выбора
+    if (imageInputRef.value) {
+        imageInputRef.value.value = ''
+    }
+}
+
+const removeUploadedImage = () => {
+    uploadedImageForModification.value = null
+}
+
 /* генерация изображения */
 const generateImage = async () => {
     if (!imagePrompt.value.trim() || isGeneratingImage.value) return
     
     const prompt = imagePrompt.value.trim()
+    const hasUploadedImage = !!uploadedImageForModification.value
+    
+    // Очищаем промпт и загруженное изображение после отправки
     imagePrompt.value = ''
+    const uploadedImageData = uploadedImageForModification.value
+    uploadedImageForModification.value = null
     
     // Проверяем авторизацию
     if (!id || !authenticated) {
@@ -1104,10 +1191,14 @@ const generateImage = async () => {
     }
     
     // Добавляем запрос пользователя в UI
+    const userMessageContent = hasUploadedImage 
+        ? `Изменить изображение: ${prompt}` 
+        : `Сгенерировать изображение: ${prompt}`
+    
     messages.value.push({
         id: Date.now(),
         role: 'user',
-        content: `Сгенерировать изображение: ${prompt}`,
+        content: userMessageContent,
         website_user_id: id,
         dialog_id: currentDialogId.value,
         created_at: new Date().toISOString()
@@ -1121,11 +1212,18 @@ const generateImage = async () => {
     isGeneratingImage.value = true
     
     try {
+        // Конвертируем изображение в base64 если оно загружено
+        let imageBase64 = null
+        if (uploadedImageData) {
+            imageBase64 = await fileToBase64(uploadedImageData.file)
+        }
+        
         const requestBody = {
             prompt: prompt,
             size: imageSize.value,
             userId: String(id),
-            dialogId: currentDialogId.value || 1
+            dialogId: currentDialogId.value || 1,
+            inputImage: imageBase64 || undefined // Добавляем загруженное изображение если есть
         }
         
         const response = await $fetch('/api/website/generate-image', {
@@ -1146,10 +1244,12 @@ const generateImage = async () => {
         const aiMessage = {
             id: Date.now() + 1,
             role: 'assistant',
-            content: `Изображение сгенерировано: ${responsePrompt || prompt}`,
+            content: hasUploadedImage 
+                ? `Изображение изменено: ${responsePrompt || prompt}` 
+                : `Изображение сгенерировано: ${responsePrompt || prompt}`,
             website_user_id: id,
             dialog_id: currentDialogId.value,
-            generatedImage: imageUrl, // base64 data URL
+            generatedImage: imageUrl, // base64 data URL или URL из Storage
             created_at: new Date().toISOString()
         }
         

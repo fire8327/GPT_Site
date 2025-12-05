@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
     try {
         const body = await readBody(event)
         
-        const { prompt, size, userId, dialogId } = body
+        const { prompt, size, userId, dialogId, inputImage } = body
         
         // Проверяем обязательные поля
         if (!prompt || (typeof prompt === 'string' && prompt.trim() === '')) {
@@ -42,10 +42,39 @@ export default defineEventHandler(async (event) => {
         // Используем chat/completions согласно документации OpenRouter
         // Формат запроса соответствует примеру из документации
         
-        console.log('Generating image with:', { model: 'openai/gpt-5-image-mini', prompt, size: validSize, aspectRatio })
+        const hasInputImage = !!inputImage && typeof inputImage === 'string' && inputImage.startsWith('data:image/')
+        console.log('Generating image with:', { 
+            model: 'google/gemini-2.5-flash-image', 
+            prompt, 
+            size: validSize, 
+            aspectRatio,
+            hasInputImage: hasInputImage
+        })
         
         // Формируем промпт с информацией о размере и формате
-        const enhancedPrompt = `${prompt}\n\nРазрешение: ${validSize}, Соотношение сторон: ${aspectRatio}`
+        const enhancedPrompt = hasInputImage 
+            ? `${prompt}\n\nРазрешение: ${validSize}, Соотношение сторон: ${aspectRatio}`
+            : `${prompt}\n\nРазрешение: ${validSize}, Соотношение сторон: ${aspectRatio}`
+        
+        // Формируем контент сообщения
+        const messageContent: any[] = [
+            {
+                type: 'text',
+                text: hasInputImage 
+                    ? `Измени это изображение согласно описанию: ${enhancedPrompt}`
+                    : `Сгенерируй изображение: ${enhancedPrompt}`
+            }
+        ]
+        
+        // Если есть загруженное изображение, добавляем его в контент
+        if (hasInputImage) {
+            messageContent.push({
+                type: 'image_url',
+                image_url: {
+                    url: inputImage
+                }
+            })
+        }
         
         const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
@@ -60,12 +89,7 @@ export default defineEventHandler(async (event) => {
                 messages: [
                     {
                         role: 'user',
-                        content: [
-                            {
-                                type: 'text',
-                                text: `Сгенерируй изображение: ${enhancedPrompt}`
-                            }
-                        ]
+                        content: messageContent
                     }
                 ]
             })
@@ -197,7 +221,9 @@ export default defineEventHandler(async (event) => {
         }
         
         // Сохраняем сообщение пользователя
-        const userMessageContent = `Сгенерировать изображение: ${prompt}`
+        const userMessageContent = hasInputImage 
+            ? `Изменить изображение: ${prompt}` 
+            : `Сгенерировать изображение: ${prompt}`
         
         const { error: userMsgError } = await supabase
             .from('website_conversations')
@@ -220,7 +246,9 @@ export default defineEventHandler(async (event) => {
             .insert({
                 website_user_id: userId,
                 role: 'assistant',
-                content: `Изображение сгенерировано: ${prompt}`,
+                content: hasInputImage 
+                    ? `Изображение изменено: ${prompt}` 
+                    : `Изображение сгенерировано: ${prompt}`,
                 dialog_id: dialogId || 1,
                 generated_image: storageImageUrl, // Сохраняем URL из Storage
                 created_at: new Date().toISOString()
