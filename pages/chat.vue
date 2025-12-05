@@ -141,9 +141,41 @@
                                             <Icon class="text-lg text-white" name="material-symbols:download"/>
                                         </button>
                                     </div>
+                                    <!-- Полный ответ API -->
+                                    <div v-if="msg.apiResponse" class="mt-3">
+                                        <button
+                                            @click="msg.showApiResponse = !msg.showApiResponse"
+                                            class="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors cursor-pointer">
+                                            <Icon 
+                                                :class="msg.showApiResponse ? 'rotate-90' : ''" 
+                                                class="text-sm transition-transform" 
+                                                name="material-symbols:chevron-right"/>
+                                            <span>Полный ответ API (JSON)</span>
+                                        </button>
+                                        <div v-if="msg.showApiResponse" class="mt-2 p-3 bg-[#14120B] border border-white/10 rounded-lg overflow-auto max-h-96 custom-scrollbar">
+                                            <pre class="text-[10px] md:text-xs font-mono text-gray-300 whitespace-pre-wrap break-all">{{ JSON.stringify(msg.apiResponse, null, 2) }}</pre>
+                                        </div>
+                                    </div>
                                 </div>
                                 <!-- Обычное текстовое сообщение -->
-                                <div v-else class="flex-1 min-w-0 formatted-message [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_code]:text-[10px] md:[&_code]:text-xs [&_code]:break-all [&_pre]:my-2 [&_pre]:whitespace-pre [&_pre]:overflow-x-auto [&_pre]:custom-scrollbar [&_pre]:max-w-full [&_pre]:min-w-0 [&_pre_code]:block [&_pre_code]:text-[10px] md:[&_pre_code]:text-xs [&_pre_code]:break-all [&_pre_code]:max-w-full [&_h1]:text-lg md:[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:block [&_h1]:break-words [&_h2]:text-base md:[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:block [&_h2]:break-words [&_h3]:text-sm md:[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:block [&_h3]:break-words [&_ul]:block [&_ul]:break-words [&_ol]:block [&_ol]:break-words [&_li]:break-words [&_p]:break-words [&_a]:underline [&_a]:text-blue-400 [&_a:hover]:text-blue-300 [&_a]:break-all" v-html="formatMessage(msg.content)"></div>
+                                <div v-else class="flex-1 min-w-0">
+                                    <div :class="msg.isError ? 'text-red-400' : ''" class="formatted-message [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_code]:text-[10px] md:[&_code]:text-xs [&_code]:break-all [&_pre]:my-2 [&_pre]:whitespace-pre [&_pre]:overflow-x-auto [&_pre]:custom-scrollbar [&_pre]:max-w-full [&_pre]:min-w-0 [&_pre_code]:block [&_pre_code]:text-[10px] md:[&_pre_code]:text-xs [&_pre_code]:break-all [&_pre_code]:max-w-full [&_h1]:text-lg md:[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:block [&_h1]:break-words [&_h2]:text-base md:[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:block [&_h2]:break-words [&_h3]:text-sm md:[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:block [&_h3]:break-words [&_ul]:block [&_ul]:break-words [&_ol]:block [&_ol]:break-words [&_li]:break-words [&_p]:break-words [&_a]:underline [&_a]:text-blue-400 [&_a:hover]:text-blue-300 [&_a]:break-all" v-html="formatMessage(msg.content)"></div>
+                                    <!-- Полный ответ API для ошибок -->
+                                    <div v-if="msg.apiResponse && msg.isError" class="mt-3">
+                                        <button
+                                            @click="msg.showApiResponse = !msg.showApiResponse"
+                                            class="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer">
+                                            <Icon 
+                                                :class="msg.showApiResponse ? 'rotate-90' : ''" 
+                                                class="text-sm transition-transform" 
+                                                name="material-symbols:chevron-right"/>
+                                            <span>Полный ответ API (JSON)</span>
+                                        </button>
+                                        <div v-if="msg.showApiResponse" class="mt-2 p-3 bg-[#14120B] border border-red-500/20 rounded-lg overflow-auto max-h-96 custom-scrollbar">
+                                            <pre class="text-[10px] md:text-xs font-mono text-gray-300 whitespace-pre-wrap break-all">{{ JSON.stringify(msg.apiResponse, null, 2) }}</pre>
+                                        </div>
+                                    </div>
+                                </div>
                                 <button 
                                     v-if="!msg.generatedImage"
                                     @click="copyMessage(msg.content)"
@@ -1231,10 +1263,15 @@ const generateImage = async () => {
             body: requestBody
         }).catch(err => {
             console.error('API Error:', err)
-            throw new Error(err.data?.statusMessage || err.data?.message || err.message || 'Ошибка при генерации изображения')
+            console.error('Full error data:', JSON.stringify(err, null, 2))
+            
+            // Сохраняем полную ошибку для дальнейшей обработки
+            const errorToThrow: any = new Error(err.data?.statusMessage || err.data?.message || err.message || 'Ошибка при генерации изображения')
+            errorToThrow.data = err.data // Сохраняем data для доступа к полному ответу API
+            throw errorToThrow
         })
         
-        const { imageUrl, prompt: responsePrompt } = response
+        const { imageUrl, prompt: responsePrompt, apiResponse } = response
         
         if (!imageUrl) {
             throw new Error('Изображение не было получено от API')
@@ -1250,6 +1287,7 @@ const generateImage = async () => {
             website_user_id: id,
             dialog_id: currentDialogId.value,
             generatedImage: imageUrl, // base64 data URL или URL из Storage
+            apiResponse: apiResponse, // Полный ответ API для отображения
             created_at: new Date().toISOString()
         }
         
@@ -1270,15 +1308,51 @@ const generateImage = async () => {
         
     } catch (error) {
         console.error('Error generating image:', error)
+        console.error('Full error object:', JSON.stringify(error, null, 2))
+        
+        // Получаем полный ответ API из ошибки
+        const apiResponse = error.data?.data?.apiResponse || error.data?.apiResponse
         
         let errorMessage = 'Ошибка при генерации изображения'
-        if (error.message) {
+        
+        // Обрабатываем ошибку и формируем понятное сообщение для пользователя
+        if (error.data?.statusMessage) {
+            const statusMsg = error.data.statusMessage
+            
+            // Если сообщение содержит большой JSON, извлекаем только основную информацию
+            if (statusMsg.includes('Полный ответ API:') || statusMsg.length > 500) {
+                // Извлекаем краткую информацию из начала сообщения
+                const lines = statusMsg.split('\n')
+                const shortMessage = lines.slice(0, 5).join('\n') // Первые 5 строк
+                errorMessage = `${shortMessage}\n\nПолный ответ API отображается ниже`
+            } else {
+                errorMessage = statusMsg
+            }
+        } else if (error.message) {
             errorMessage = error.message
-        } else if (error.data?.statusMessage) {
-            errorMessage = error.data.statusMessage
         }
         
-        showMessage(errorMessage, false)
+        // Добавляем сообщение об ошибке с полным ответом API в UI
+        const errorMessageObj = {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: errorMessage,
+            website_user_id: id,
+            dialog_id: currentDialogId.value,
+            apiResponse: apiResponse, // Полный ответ API для отображения
+            isError: true,
+            created_at: new Date().toISOString()
+        }
+        
+        messages.value.push(errorMessageObj)
+        
+        // Автопрокрутка
+        nextTick(() => {
+            scrollToBottom()
+        })
+        
+        // Показываем пользователю краткое сообщение
+        showMessage('Произошла ошибка при генерации изображения. Полный ответ API отображается в сообщении выше.', false)
         
         // Удаляем сообщение пользователя из UI при ошибке
         if (messages.value.length > 0 && messages.value[messages.value.length - 1].role === 'user') {

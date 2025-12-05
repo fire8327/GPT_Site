@@ -116,16 +116,25 @@ export default defineEventHandler(async (event) => {
             contentLength: JSON.stringify(messageContent).length
         })
         
-        const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${config.openRouterApiKey}`,
-                'HTTP-Referer': 'https://your-site.com',
-                'X-Title': 'GPT Site Image Generation'
-            },
-            body: JSON.stringify(requestBody)
-        })
+        let openRouterResponse: Response
+        try {
+            openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${config.openRouterApiKey}`,
+                    'HTTP-Referer': 'https://your-site.com',
+                    'X-Title': 'GPT Site Image Generation'
+                },
+                body: JSON.stringify(requestBody)
+            })
+        } catch (fetchError: any) {
+            console.error('Fetch error:', fetchError)
+            throw createError({
+                statusCode: 500,
+                statusMessage: `Ошибка сети при обращении к OpenRouter API: ${fetchError.message || 'Неизвестная ошибка'}. Проверьте подключение к интернету.`
+            })
+        }
         
         if (!openRouterResponse.ok) {
             const errorText = await openRouterResponse.text()
@@ -166,8 +175,28 @@ export default defineEventHandler(async (event) => {
             })
         }
         
-        const openRouterData = await openRouterResponse.json()
-        console.log('OpenRouter response (RAW):', JSON.stringify(openRouterData, null, 2))
+        let openRouterData: any
+        try {
+            const responseText = await openRouterResponse.text()
+            console.log('OpenRouter response (RAW text, first 5000 chars):', responseText.substring(0, 5000))
+            
+            try {
+                openRouterData = JSON.parse(responseText)
+                console.log('OpenRouter response (parsed JSON):', JSON.stringify(openRouterData, null, 2))
+            } catch (parseError) {
+                console.error('Failed to parse JSON response:', parseError)
+                throw createError({
+                    statusCode: 500,
+                    statusMessage: `API вернул невалидный JSON. Ответ (первые 2000 символов):\n${responseText.substring(0, 2000)}`
+                })
+            }
+        } catch (readError: any) {
+            console.error('Error reading response:', readError)
+            throw createError({
+                statusCode: 500,
+                statusMessage: `Ошибка при чтении ответа от API: ${readError.message}`
+            })
+        }
         
         // Извлекаем изображение из ответа
         // Структура может быть разной в зависимости от модели и типа запроса
@@ -232,10 +261,14 @@ export default defineEventHandler(async (event) => {
             if (!imageUrl) {
                 console.warn('No image found in response structure. Full message:', JSON.stringify(message, null, 2))
                 console.warn('Available keys in message:', message ? Object.keys(message) : 'message is null')
+                console.warn('Full response structure:', JSON.stringify(openRouterData, null, 2))
+            } else {
+                console.log('✅ Successfully extracted image URL. Length:', imageUrl.length)
+                console.log('Image URL preview (first 100 chars):', imageUrl.substring(0, 100))
             }
         } catch (error) {
             console.error('Error extracting image from response:', error)
-            console.error('Response structure:', JSON.stringify(openRouterData, null, 2))
+            console.error('Full response structure:', JSON.stringify(openRouterData, null, 2))
         }
         
         if (!imageUrl) {
@@ -244,13 +277,39 @@ export default defineEventHandler(async (event) => {
                 hasChoices: !!openRouterData.choices,
                 choicesLength: openRouterData.choices?.length || 0,
                 messageContent: openRouterData.choices?.[0]?.message?.content || 'N/A',
-                messageKeys: openRouterData.choices?.[0]?.message ? Object.keys(openRouterData.choices[0].message) : []
+                messageContentType: typeof openRouterData.choices?.[0]?.message?.content,
+                messageKeys: openRouterData.choices?.[0]?.message ? Object.keys(openRouterData.choices[0].message) : [],
+                fullResponse: openRouterData
             }
-            console.error('Failed to extract image. Details:', errorDetails)
+            console.error('Failed to extract image. Details:', JSON.stringify(errorDetails, null, 2))
             
+            // Формируем краткое сообщение для пользователя
+            const userFriendlyMessage = `Изображение не было извлечено из ответа API.
+
+Структура ответа:
+- Есть choices: ${errorDetails.hasChoices}
+- Количество choices: ${errorDetails.choicesLength}
+- Тип content: ${errorDetails.messageContentType}
+- Ключи в message: ${errorDetails.messageKeys.join(', ') || 'нет'}
+
+Полный ответ API доступен в консоли сервера и браузера (F12).`
+            
+            // Полный ответ логируем отдельно
+            const fullResponseStr = JSON.stringify(openRouterData, null, 2)
+            console.error('Full API response (for debugging):', fullResponseStr)
+            
+            // Возвращаем ошибку с кратким сообщением для пользователя и полным ответом в data
             throw createError({
                 statusCode: 500,
-                statusMessage: `Изображение не было сгенерировано или не удалось его извлечь из ответа. Ответ API: ${JSON.stringify(errorDetails)}`
+                statusMessage: userFriendlyMessage,
+                data: {
+                    apiResponse: openRouterData,
+                    errorDetails: errorDetails,
+                    // Полный ответ доступен в консоли браузера через error.data.data.apiResponse
+                    fullResponse: fullResponseStr.length > 10000 
+                        ? fullResponseStr.substring(0, 10000) + '\n... (обрезано)'
+                        : fullResponseStr
+                }
             })
         }
         
@@ -364,10 +423,11 @@ export default defineEventHandler(async (event) => {
             })
         }
         
-        // Возвращаем URL изображения из Storage
+        // Возвращаем URL изображения из Storage и полный ответ API для отладки
         return {
             imageUrl: storageImageUrl,
-            prompt: prompt
+            prompt: prompt,
+            apiResponse: openRouterData // Полный ответ API для отображения на странице
         }
     } catch (error: any) {
         // Если это уже созданная ошибка, просто пробрасываем её
@@ -375,11 +435,30 @@ export default defineEventHandler(async (event) => {
             throw error
         }
         
-        // Иначе создаем новую ошибку
+        // Иначе создаем новую ошибку с детальной информацией
         console.error('Unexpected error in generate-image endpoint:', error)
+        console.error('Error stack:', error.stack)
+        console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+        
+        // Формируем детальное сообщение об ошибке
+        let errorMessage = 'Внутренняя ошибка сервера'
+        if (error.message) {
+            errorMessage = `Ошибка: ${error.message}`
+        }
+        
+        // Если это ошибка сети (fetch failed)
+        if (error.message?.includes('fetch') || error.message?.includes('network') || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+            errorMessage = `Ошибка сети при обращении к API: ${error.message}. Проверьте подключение к интернету и повторите попытку.`
+        }
+        
         throw createError({
             statusCode: 500,
-            statusMessage: error.message || 'Internal server error'
+            statusMessage: `${errorMessage}\n\nДетали ошибки:\n${JSON.stringify({
+                name: error.name,
+                message: error.message,
+                code: error.code,
+                cause: error.cause
+            }, null, 2)}`
         })
     }
 })
